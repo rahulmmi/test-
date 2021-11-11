@@ -650,3 +650,673 @@ if($_GET && get!=1)
     if(!$q) die('[]');
 }
 ?>
+
+
+
+
+---------------------------------------------------------------------------------------------------------------------------
+<?php
+//SessionComponent::write('user.name', 'balmukand');echo $this->Session->read('user.name');die;
+
+error_reporting(0);
+header('Set-Cookie: cross-site-cookie=name; SameSite=None; Secure');
+if($_SERVER['HTTP_HOST']=='maps.mapmyindia.com')
+{
+    ini_set('session.cookie_httponly',1);
+    ini_set('session.use_only_cookies',1);
+}
+else if(strpos($_SERVER['HTTP_HOST'],'move.mapmyindia.com')!==false)
+{
+    header("location:https://maps.mapmyindia.com");die;
+}
+session_start();
+register_shutdown_function('page_error');
+if($_SESSION['auth'])  header("Access-Control-Allow-Origin: *");
+
+function page_error() {
+   $last_error = error_get_last();
+  # print_r($last_error);die;
+   if($last_error['type'] === E_ERROR || $last_error['type']==64) {  if($_GET[1]==1){print_r($last_error);die;}
+       if($_SESSION['user_name']=='balmukand' || $_GET[1]==1){print_r($last_error);die;}
+       else {echo "<center><div  style='width:auto;border-radius:10px;paddig-top:5px;margin-top:20px'><img src='images/side/ic_side_logo.png'><h1>We're under maintenace, Please try later!</h1></div></center>";}
+        require_once realpath(dirname(__FILE__ ) . '/DBConnector.php');$db = new DBConnector();
+        $res=$db->logs("page-error:".  addslashes(json_encode($last_error)));
+   }
+}
+set_time_limit(0);
+ob_start("ob_gzhandler");
+require_once 'globals.php';
+$uri                        =   str_replace("//","/",$_SERVER["REQUEST_URI"]);
+//$uri                      =   strtok($uri, '?');
+$uri                        =   str_replace('??@','?@',$uri);
+$uri                        =   preg_replace('/\//', '', $uri, 1);
+$uri                        =   explode('?',str_replace('?@','@',$uri))[0];//added by bm
+$uri_arr                    =   preg_split('/(\/)/', $uri);
+$uri_arr_size               =   sizeof($uri_arr); // 2 die();
+
+if($_SERVER['HTTP_X_FORWARDED_PROTO']== "https" || $_SERVER['HTTPS']=='on')
+{
+    $urih = 'https://';
+} 
+else 
+{
+    $urih = 'http://';
+}
+#echo "<pre>";print_r($_SERVER);die;
+//if($_SERVER['HTTP_X_FORWARDED_PROTO']== "https") $urih = 'https://';
+$actual_link = $urih."$_SERVER[HTTP_HOST]$_SERVER[REQUEST_URI]";//die($actual_link);
+$root = $urih  . $_SERVER['HTTP_HOST'] .dirname(str_replace('app/webroot','',$_SERVER['PHP_SELF']));
+$root_arr=explode('/',$root);
+$lastInroot=end($root_arr);
+if(strpos($_SERVER["REQUEST_URI"],$lastInroot)===false) $root= rtrim(str_replace($lastInroot,'',$root),"/");
+//die($_SERVER["REQUEST_URI"]);
+//die($root);
+$last_dir=end(explode('/',$root));
+$dir=preg_split('/(\/)/',preg_replace('/\//', '',$this->Html->url('/'),1));
+$root_count=sizeof($dir)-(strpos($_SERVER[REQUEST_URI],$this->Html->url('/'))!==false?1:2);$uri_num=$root_count;
+//print_r($_SERVER[REQUEST_URI]);die(" Ss".$uri_num);
+if($uri_arr_size>=3 && $_SERVER['HTTP_HOST']=='maps.mapmyindia.com') header("location:https://maps.mapmyindia.com");
+//if(strpos($actual_link,'map7.1')===false) $uri_num=$uri_num+1;
+$cur_url= $uri_arr[$uri_num];
+$cur_url=str_replace('confirm','',str_replace('script','',str_replace('"',"",str_replace("'","",str_replace('alert','',str_replace('%3d','',strip_tags(urldecode($cur_url))))))));
+#die($cur_url);
+
+if($cur_url=="SHL"){  
+    require_once 'shl_check.php';die;  
+
+}
+
+if($cur_url=="ForgotPassword"){
+    die("<script> window.location.href='https://anchor.mapmyindia.com/app#/userRecovery?type=forgotPassword'</script>");
+
+}
+
+if(stripos($cur_url,'call girl')!==false){header("location:./");die;}
+
+if($uri_arr[$uri_num+1])
+{     /***/
+      if($cur_url=='eloc' || $cur_url=='location' || $cur_url=='vehicle' || $cur_url=='pom') {header("location:../@".str_replace('@','',urldecode($uri_arr[$uri_num+1])));exit;}
+      else if ($cur_url=='alarm/') {header("location:../".str_replace('/','$',$uri_arr[$uri_num+1]));exit;}
+      else if($cur_url=='checkin') {header("location:../@".$uri_arr[$uri_num+1]);die;}
+      else if($cur_url=='profile') {header("location:../".$uri_arr[$uri_num+1]);exit;}
+      else if($cur_url=='corona')
+      {
+          $next_url=$uri_arr[$uri_num+1];
+          if($next_url)
+          {
+              if(strpos($next_url,'testing-centre')!==false) $loc="../corona?corona_testing_centre";
+              else if(strpos($next_url,'treatment-centre')!==false) $loc="../corona?corona_treatment_centre";
+              else if(strpos($next_url,'sample-collection-centre')!==false) $loc="../corona?corona_sample_collection_centre";
+              else if(strpos($next_url,'isolation-ward')!==false) $loc="../corona?corona_isolation_ward";
+              else if(strpos($next_url,'ficci')!==false) die('11');
+          }
+          if($loc) header("location:$loc");
+          else {require_once 'covid-19/corona.php';}
+          die;
+      }
+     else if($uri_arr[$uri_num+1]=="near")
+     {
+    
+      $cat=urldecode($uri_arr[$uri_num]);
+      $loca=str_replace(",", "+", $uri_arr[$uri_num+2])  ;
+      if(!$loca) $loca="28.3323+77.32424";
+      $myurl="place-".str_replace(" ", "+",$cat)."-near-".urlencode($loca)."?@embedzdata=".base64_encode("$loca+11++$cat+el+,")."ed";
+      header("location:../../$myurl");die;
+   
+     
+     }
+      else if($cur_url=='review'){
+          if(strlen($uri_arr[$uri_num+1]) == 6 && $uri_arr[$uri_num+2]){
+            header("location:../../review?journey=@".$uri_arr[$uri_num+2]);
+            die;
+          }
+          else{
+            header("location:".($uri_arr[$uri_num+2] ? '../' : '' )."../review?journey=@".$uri_arr[$uri_num+1].(($uri_arr[$uri_num+2]) ? '@'.$uri_arr[$uri_num+2]:''));
+            die;
+          }
+      }
+      else if($cur_url=='report' || $cur_url=='reports')
+      {
+          $pin=$uri_arr[$uri_num+2];
+          if($pin) header("location:../../report@@@".$pin);
+          else header("location:".($uri_arr[$uri_num+2]?'../':'')."../report@@@".$uri_arr[$uri_num+1].($uri_arr[$uri_num+2]?'@'.$uri_arr[$uri_num+2]:''));
+          die;
+      }
+      else  if($cur_url=='reports' || $cur_url=='pinid')
+      {
+        header("location:".($uri_arr[$uri_num+2]?'../':'')."../report@@@".$uri_arr[$uri_num+1].($uri_arr[$uri_num+2]?'@'.$uri_arr[$uri_num+2]:''));
+        die;
+      }
+      $rest_url = implode("$",array_slice($uri_arr, $uri_num));
+    //  header("location:".str_replace("app/webroot","",$root)."$rest_url");exit;
+      if(strpos($rest_url,'place-')!==false)
+      {
+        header("location:".str_replace("app/webroot","",$root)."/$rest_url");exit;
+      }
+      else {
+        header("location:".str_replace("app/webroot","",$root)."$rest_url");exit;
+      }
+      #print_r($rest_url);die;
+}
+else if($uri_arr_size>=3 && $_SERVER['HTTP_HOST']=='maps.mapmyindia.com') header("location:https://maps.mapmyindia.com/".$cur_url);
+//if($_SESSION['user_name']=='balmukand') die($cur_url);
+
+if($cur_url=='uid!' || $cur_url=='uid!!')
+{
+    if($_SESSION['access_atlas']) 
+    { 
+        die(base64_encode(implode('-',array_reverse(explode('-',$_SESSION['access_atlas']))))."mm");
+    }
+    require_once realpath(dirname(__FILE__ ) . '/Auth_login.php');
+    $object = new Auth_login();
+    $tkn=str_replace('Bearer ','',$object->Authorization());
+    if($tkn) 
+    { 
+        $_SESSION['access_atlas']=$tkn;
+        $tkn =  base64_encode(implode('-',array_reverse(explode('-',$tkn))))."mm";
+    }
+    
+    die($tkn);
+}
+if(strpos($cur_url,'autosugg')!==false)
+{ 
+    require_once 'auto.php';die;
+}
+else if(strpos($cur_url,'mmi-report')!==false)
+{
+ require_once 'mmi_report/index.php';die;
+}
+else if(strpos($cur_url,'mmi-claim')!==false)
+{
+
+ require_once 'mmi_claim/index.php';die;
+}
+else if(strpos($cur_url,'claim-ajax')!==false)
+{
+
+ require_once 'mmi_claim/ajax.php';die;
+}
+
+if(strpos($cur_url,'near-what')!==false)
+{
+    require_once 'nearby_what.php';die;
+}
+else if(strpos($cur_url,_CSS_.'.css')!==false)
+{ 
+    $css_folder._CSS_."/";require_once $css_folder.'index.ctp';die;
+}
+else if(strpos($cur_url,_JS_.'.js')!==false)
+{ 
+   $js_folder=_JS_."/";require_once $js_folder.'index.ctp';die;
+}
+else if(strpos($cur_url,'get-geo')!==false)
+{
+   require_once 'auto.php';die; //require_once 'get_geo.php';die;
+}
+else if(strpos($_SERVER["REQUEST_URI"],'send-to?')!==false)
+{
+   require_once 'send_to_phone.php';die(); //require_once 'get_geo.php';die;
+}
+elseif ($cur_url=='eloc'||$cur_url=='location'||$cur_url=='vehicle') {
+      $elc=  array_search($cur_url,$uri_arr);
+      header("location:../@".str_replace('@','',$uri_arr[($elc+1)]));
+}
+elseif ($cur_url=='profile') {
+      $elc=  array_search($cur_url,$uri_arr);
+      header("location:../".$uri_arr[($elc+1)]);
+}
+elseif ($cur_url=='getMove' || $cur_url=="getMoveHuawei") {
+    require_once realpath(dirname(__FILE__) . '/Mobile_Detect.php');
+$detect = new Mobile_Detect;
+$mobile = ($detect->isMobile()) ? 1 : 0;
+$HTTP_USER_AGENT = strtolower($_SERVER['HTTP_USER_AGENT']);
+if((bool) strpos($HTTP_USER_AGENT, 'android')) $os = 'android';
+else if(!$android && ((bool) strpos($HTTP_USER_AGENT, 'iphone') || (bool) strpos($HTTP_USER_AGENT, 'ipod'))) $os = 'iphone';
+#print_r($_SESSION);die;
+if($os=='android') 
+{
+    $url="https://play.google.com/store/apps/details?id=com.mmi.maps&hl=en";
+    if($cur_url=="getMoveHuawei"){ 
+        $url="https://appgallery.huawei.com/#/app/C101651625";
+    }
+   
+}
+else if($os=='iphone') $url="https://apps.apple.com/in/app/map-directions-local-searches-travel-guide/id723492531";
+else $url=".";
+
+#die($os);
+header("location:$url");
+}
+/*elseif (($cur_url=='review' || $cur_url=='checkin'||$cur_url=='pinid') && strpos($cur_url,'?')!==false) {
+   // die('ss');
+      $elc=  array_search($cur_url,$uri_arr);
+      header("location:../?journey=review-".$uri_arr[($elc+1)]);
+}*/
+elseif ($cur_url=='review' || $cur_url=='checkin'||$cur_url=='pinid') {
+      $elc=  array_search($cur_url,$uri_arr);
+      $reviewEloc = $_GET['journey'];
+      $pin_arr =explode("@", $reviewEloc);
+      # print_r($pin_arr);die($pin_arr[count($pin_arr)-1]);
+      //echo $pin_arr[count($pin_arr)-1];die("journey=review-".$pin_arr[count($pin_arr)-1]);
+      header("location:./?journey=@".$pin_arr[count($pin_arr)-1]);  
+}
+else if(strpos($cur_url,'poi_details')!==false)
+{
+    require_once 'details.php';die;
+}
+else if($cur_url=='navigation' || strpos($cur_url,'navigation?')!==false || strpos($_SERVER["REQUEST_URI"],'direction?')!==false)
+{
+    $places=$_GET['places'];
+    $nav_url_arr=explode(";", $places);
+    #####check ELOC passed
+    if(strlen(trim($nav_url_arr[0]))===6 || strlen(trim($nav_url_arr[1]))===6)
+    {
+        define("get",1);
+        require_once 'auto.php';
+        $i=0;
+        foreach($nav_url_arr as  $searc_eloc)
+        {
+          if(strlen(trim($searc_eloc))==6)
+          {
+            $search= auto::search($searc_eloc,'','','','','','','raw');
+            $lat=$search[0]['latitude'];
+            $lng=$search[0]['longitude'];
+            $name=preg_replace('/[^A-Za-z0-9\-]/', '',str_replace(' ','-',strtolower($search[0]['placeName'])));
+            if($lat && $lng)
+            {
+                $nav_url_arr[$i]="$lat,$lng,$name";
+            }
+          }
+          $i++;
+           #echo "<pre>"; print_r($name);
+        }
+    }
+    #print_r($nav_url_arr);die;
+    
+    $nav_length=count($nav_url_arr);
+    $dir_url="direction-from--";$zdata="from+";
+    if($nav_length>1)
+    {
+        $loc_from=explode(',',$nav_url_arr[0]);
+        if($loc_from[0]=='current_location' || $loc_from[0]=='current-location') $dir_url="direction-from-current-location";
+        else{
+            if (preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_from[0]) && preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_from[1])){ $zdata="from+".round($loc_from[1],6).",".round($loc_from[0],6);}
+            if($loc_from[2]) $dir_url="direction-from-".urldecode(implode(",",array_slice($loc_from,2)));
+            else $dir_url ="direction-from-".round($loc_from[1],6).",".round($loc_from[0],6);
+        }
+    }
+    
+    /*via*/
+    $via_url="";$via_zdata="";
+    if($nav_length>=3){ $via=1;
+    $loc_v1=explode(',',$nav_url_arr[$via]);
+    if($loc_v1[0]=='current_location' || $loc_v1[0]=='current-location') $via_url=="-via-current-location";
+    else{
+        if (preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_v1[0]) && preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_v1[1])){ $via_zdata="+v+".round($loc_v1[1],6).",".round($loc_v1[0],6);}
+        $via_url="-via-".urldecode(implode(",",array_slice($loc_v1,2)));
+    }}
+    if($nav_length>=4){ $via2=2;
+    $loc_v2=explode(',',$nav_url_arr[$via2]);
+    if($loc_v2[0]=='current_location' || $loc_v2[0]=='current-location') $via_url.="?current-location";
+    else{
+        if (preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_v2[0]) && preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_v2[1])){ $via_zdata.="|".round($loc_v2[1],6).",".round($loc_v2[0],6);}
+        $via_url.="?".urldecode(implode(",",array_slice($loc_v2,2)));
+    }}
+    if($nav_length>=5){ $via3=3;
+    $loc_v3=explode(',',$nav_url_arr[$via3]);
+    if($loc_v3[0]=='current_location' || $loc_v3[0]=='current-location') $via_url.="?current-location";
+    else{
+        if (preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_v3[0]) && preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_v3[1])){ $via_zdata.="|".round($loc_v3[1],6).",".round($loc_v3[0],6);}
+        $via_url.="?".urldecode(implode(",",array_slice($loc_v3,2)));
+    }}
+    
+    /*end*/
+    /*if($nav_length==2) $end=1;else if($nav_length==3) $end=2;else if($nav_length==4) $end=3;else if($nav_length==5) $end=4;*/
+    $end=end($nav_url_arr);
+    $loc_end=explode(',',$end);
+    if($loc_end[0]=='current_location' || $loc_end[0]=='current-location') $dir_url.="-to-current-location";
+    else{
+        
+        if (preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_end[0]) && preg_match('/^[0-9]+(\\.[0-9]+)?$/', $loc_end[1])){ $zdata.="+to+".round($loc_end[1],6).",".round($loc_end[0],6);}
+        if($loc_end[2]) $dir_url.="?-to-".urldecode(implode(",",array_slice($loc_end,2)));
+        else $dir_url.="?-to-".round($loc_end[1],6).",".round($loc_end[0],6);
+    }
+    if($via_url) $dir_url.=$via_url;
+    if($via_zdata)$zdata.=$via_zdata;
+    
+    $dir_url.="@zdata=".base64_encode($zdata);
+    header("location:".$dir_url);
+    //echo "<pre>"; print_r($dir_url);echo "</pre>";
+    die();
+}
+else if(strpos($cur_url,'details_temp')!==false)
+{
+    require_once 'details_temp.php';die;
+}
+else if(strpos($cur_url,'weather_aqi')!==false)
+{
+    require_once 'weather_aqi.php';die;
+}
+else if(strpos($cur_url,'filter_htm')!==false)
+{
+   require_once 'filter_html.php';die;
+}
+else if(strpos($cur_url,'maplayer_call')!==false)
+{
+    require_once 'maplayer.php';die;
+}
+else if(strpos($cur_url,'place-')!==false)
+{
+    $pu=str_replace('?','',str_replace('-',', ',str_replace('+',' ',preg_replace('/place-/','',strtok(urldecode($cur_url),'@'),1))));
+    if(strpos($pu,'near,')) $title=str_replace(',','',  ucfirst ($pu))." | search ".str_replace(',','',str_replace('near','nearby',$pu));
+    else $title=ucwords(substr(str_replace('$','/',$pu),0,-8));
+    $description="$title. Find location, directions, places & brands,";
+    $keywords="Maps of $title ";
+    require_once 'index.ctp';die;
+}
+else if ($cur_url=='direction') 
+{   
+    $title="Get map direction by MapmyIndia ";$keywords=$description=$title;require_once 'index.ctp';die;
+}
+else if(strpos($cur_url,'direction-')!==false   && strpos($cur_url,'direction-route')===false)
+{ 
+    $pu=str_replace('-',' ',str_replace('+',' ',str_replace('direction-from-','',strtok($cur_url,'@'))));
+    $pu=explode('@',str_replace('?','',str_replace('%40','@', ucwords($pu))))[0];
+    $title="MapmyIndia Move: Get map direction from ".str_replace('?','',$pu);
+    $og_desc="India's first super map app with voice-guided directions Get step-by-step voice-guided directions to your destination with live traffic-updates and ETA along the route";
+    $description="Get map direction from $pu by Mapmyindia. Find location,directions,places & brands near $pu";
+    $keywords="Get map Direction from $pu";
+    require_once 'index.ctp';die;
+}
+else if(strpos($cur_url,'near-')!==false && strpos($cur_url,'near-new')===false)
+{ 
+    $pu=str_replace('?','',str_replace('-',' ',str_replace('+',' ',str_replace('near-','nearby ',strtok($cur_url,'@')))));
+    $title=ucfirst($pu)." , search ".ucfirst($pu);
+    $description="$pu";
+    $keywords="Map for $pu";
+    require_once 'index.ctp';die;
+}
+else if(strpos($cur_url,'what-div')!==false)
+{
+    require_once 'what_div.php';die;
+}
+else if($cur_url=="direction-route")
+{
+    /*require_once 'direction_bal.php';die;*/
+    require_once 'new_direction.php';die;
+}
+else if($cur_url=="along-route")
+{
+    require_once 'alongroute.php';die;
+}
+else if(strpos($cur_url,'QR?')!==false)
+{
+    require_once 'QR/index.php';die;
+}
+else if($cur_url=="print")
+{
+    require_once 'print.php';die;
+}
+else if($cur_url=="measure")
+{
+    require_once 'measure.php';die;
+}
+else if(strpos($cur_url,'geoAnalytics')!==false)
+{ 
+    if(strpos($cur_url,'&')===false) {require_once 'current_date_election.php';die;}
+    else
+    {
+     $url="https://uatgeoanalytics.mapmyindia.in/".str_replace('~','/',str_replace('geoAnalytics?','',$cur_url))."&key=move_web"; 
+     
+     if(strpos($cur_url,'image')!==false)
+     { 
+         $FLS=file_get_contents($url);
+         header('Content-Type:image/png ');die($FLS);  
+     }
+     $object = new globals();
+     $resp=$object->curl('get',$url,$param);
+     if($resp)
+     {
+        echo json_encode($resp);
+     }
+     die;
+    }
+}
+else if(strtolower($cur_url)=="shortcut")
+{
+    header('Content-type: application/internet-shortcut');
+    header('Content-Disposition: attachment; filename="Move.URL"');
+    echo "[InternetShortcut]\nURL=https://maps.mapmyindia.com/\nIconFile=https://maps.mapmyindia.com/map7.1/images/favicon.ico\nIconIndex=1";
+    die;
+}
+else if($cur_url=="area")
+{
+    require_once 'area.php';die;
+}
+else if(strpos($cur_url,'logs')!==false)
+{
+    require_once 'logs_bal.php';die;
+}
+else if(strpos($cur_url,'send_feedback')!==false)
+{
+   require_once 'send_feedback.php';die(); //require_once 'get_geo.php';die;
+}
+else if($cur_url=="getAdvices")
+{
+    require_once 'getAdvices.php';die;
+}
+else if($cur_url=="submit-issue-feedback")
+{
+    require_once 'submit_issue.php';die;
+}
+else if(strpos($cur_url,'userAuth')!==false|| strpos($cur_url,'API')!==false)
+{
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+    header('Pragma: no-cache');
+    require_once 'auth.php';die;
+}
+else if($cur_url=="intouch_devices")
+{
+     echo "<script>$('#g_saves,#g_saves_new,#notication_id').show();</script>"; 
+     require_once 'my_devices.php'; 
+     try{$num_devices=my_devices::getentities('');}  catch (Exception $e){}
+     if($num_devices) $_SESSION['num_devices']=$num_devices;
+     /*if($_SESSION['user_name']) {echo "<script>$('#g_saves,#g_saves_new,#notication_id').show();</script>";}*/
+     if($num_devices>0){echo "<script>$('#g_devices').show();</script>";}
+     /*if($num_devices==0){echo "<script>$('#my_wevices').hide();</script>";}*/
+     if(!$num_devices) echo ", 0 Device";
+     else if($num_devices<=1) echo ", ".$num_devices." Device";
+     else if($num_devices>1) die(", ".$num_devices." Devices");
+     die;
+     
+}
+else if($cur_url=="notification")
+{
+    require_once 'notification.php';die;
+}
+else if(strpos($cur_url,'cities_list')!==false)
+{
+   require_once 'cities.php';die;
+}
+else if(strpos($cur_url,'traffic_Data')!==false)
+{
+    require_once 'trafficData.php';die;
+}
+else if(strpos($cur_url,'image-')!==false)
+{
+    require_once 'image.php';die;
+}
+else if(strpos($cur_url,'take_tour')!==false)
+{
+    require_once 'take_tour.php';die;
+}
+else if(strpos($cur_url,'brand-helper')!==false)
+{
+    require_once 'brand_helper.php';die;
+}
+else if(strpos($cur_url,'near-new')!==false)
+{
+    require_once 'nearby-new.php';die;
+}
+else if(strpos($cur_url,'get_click_revg')!==false)
+{
+    require_once 'get_click_revgeocode.php';die;
+}
+else if(strpos($cur_url,'err_mess')!==false)
+{
+    
+    require_once 'Err_mess.php';die;
+}
+else if(strpos($cur_url,'twitter')!==false)
+{
+    require_once 'social/twitter/process.php';
+    $twitter = new TwApp();
+    $twitter->login();
+    die();
+}
+else if(strpos($cur_url,'facebook')!==false)
+{
+    require_once 'social/facebook/process.php';
+    $facebook = new FbApp();
+    $facebook->login();
+    die();
+}
+else if(strpos($cur_url,'reset')!==false && $cur_url !="reseted")
+{
+  //  require_once 'reset.php';
+     require_once 'index.ctp';
+    die();
+}
+else if(strpos($cur_url,'verify')!==false)
+{
+    require_once 'verify.php';
+    die();
+}
+else if(strpos($cur_url, 'short')!==false)
+{
+    require_once 'explore-api/constant.php';
+    processShortener();
+    die();  
+}
+else if(strpos($cur_url, 'getIntouch')!==false)
+{
+    require_once 'getIntouch.php';
+    die();  
+}
+else if(strpos($cur_url,'share_location')!==false)
+{
+   require_once 'share_location.php';die;
+}
+else if(strpos($cur_url,'similar_places')!==false)
+{
+    require_once 'similar_places.php';die;
+}
+else if(strpos($cur_url,'report_list')!==false)
+{
+    require_once 'report_list.php';die;
+}
+else if(strpos($cur_url,'enquiry_list')!==false){
+    require_once 'enquiry_list.php';die;
+}
+else if(strpos($cur_url,'share-link')!==false)
+{
+    require_once 'share_link.php';die;
+}
+else if(strpos($cur_url,'still_image')!==false)
+{   //die($rest."/".$cur_url);
+    $cur_url=end(explode('/',$_SERVER["REQUEST_URI"]));
+    if(!$_GET['markers']) $cur_url.="&markers=".strip_tags($_GET['center']);
+    $FLS=file_get_contents($rest."/".$cur_url);
+    if($FLS) {header('Content-Type:image/png ');die($FLS); }
+    else die("");
+}
+else if(strpos($cur_url,'pimage')!==false)
+{   //die($rest."/".$cur_url);
+   echo $path=strip_tags($_GET['u']);
+    $FLS=file_get_contents($path);die($FLS);
+    if($FLS) {header('Content-Type:image/png ');die($FLS); }
+    else die("");
+}
+else if($cur_url=='robots.txt')
+{
+    header("Content-Type: text/plain");
+    if($actual_link=='https://maps.mapmyindia.com/robots.txt'){
+        echo "Sitemap: https://maps.mapmyindia.com/sitemap.xml";
+        die('User-agent: *
+Allow: /');}
+    else{
+        die('User-agent: *
+Disallow: /');}
+}
+else if(strpos($cur_url,'corona')!==false && strpos($cur_url,'@corona')==false)
+{
+    require_once 'covid-19/corona.php';die;
+}
+else if(strpos($cur_url,'mp3')!==false)
+{
+    
+    $u=str_replace('$','/',strip_tags($_GET['u']));
+    if($u && strpos($u,'http')!==false)
+    { 
+        header('Content-Type: audio/mpeg');
+        header('Cache-Control: no-cache');
+        header("Content-Transfer-Encoding: chunked"); 
+
+        $fls=file_get_contents($u);
+        die($fls);
+    }
+    die;
+}
+else if(strpos($cur_url,'safety_handler')!==false)
+{
+    require_once 'safetypages/safety.php';die;
+}
+else if (strpos($cur_url, 'safety_curl') !== false) {
+require_once 'safetypages/safety_curl.php';
+die;
+}
+else if(strpos($cur_url,'covid-19')!==false )
+{
+    header("location:".str_replace('covid-19','corona',$cur_url));
+}
+else if(strpos($cur_url,'captcha')!==false)
+{
+    $txt = explode('img-',$actual_link);
+    #die(print_r($txt));
+    header("Content-Type: image/png");
+    $im = @imagecreate(100, 30);
+    $background=imagecolorallocate($im,0,0,0);
+    $white = imagecolorallocate($im, 128, 128, 128);
+    imageline($im, 10, 10, 15, 2, $white);
+    imageline($im, 10, 20, 35, 2, $white);
+    imageline($im, 80, 30, 45, 2, $white);
+    imageline($im, 20, 20, 75, 2, $white);
+    imagecolortransparent($im,$background); 
+    $text_color = imagecolorallocate($im, 148, 148, 148);
+    $grey = imagecolorallocate($im, 128, 128, 128);
+    imagestring($im, 5, 10, 5,  $txt[1], $text_color);
+    imagettftext($im, 8, 0, 05, 5, $grey, $font, $captch_k);
+    imagettftext($im, 2, 0, 14, 3, $text_color, $font, $captch_k);
+    imagepng($im);
+    imagedestroy($im);die;
+}
+else 
+{ // echo substr($_SERVER["REQUEST_URI"], strrpos($url, '/') + 1);die;die($_SERVER["REQUEST_URI"]);
+   
+    $url_found="no";
+    if(substr($_SERVER[REQUEST_URI], -1)=='/' && $cur_url) header("location:".substr($actual_link,0,-1));
+    $cur_url=str_replace('alert','',str_replace('%3d','',strip_tags(urldecode($cur_url))));
+
+  
+  
+    require_once 'index.ctp';
+    die;
+}
+
+
+
+
+?>
+
+
