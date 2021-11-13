@@ -1320,3 +1320,126 @@ else
 ?>
 
 
+-----------dbconnector---------
+<?php
+
+/**
+ * Description : List what all databases are used for connectivity within maps.mapmyindia.com
+ * @author Vishwajit Pathak
+ * @version 1.0
+ * @copyright CE Infosystems Pvt. Ltd. 
+ */
+class DBConnector 
+{
+
+    private $PG_DBASE = "place6_1";
+    private $PG_HOST = "localhost";
+    private $PG_USER = "postgres";
+    private $PG_PWD = "mmicloud";
+    private $MS_DBASE_PROD = "mmi_global_v2";
+   // private $MS_HOST_PROD = "99.0.70.50";
+    private $MS_HOST_PROD = "99.0.5.100";
+    private $MS_USER_PROD = "mapsusr";
+    private $MS_PWD_PROD = 'bWFwc1BXRF8yMzc=';
+    private $MS_DBASE = "mmi_global_v1";
+    private $MS_HOST = "localhost";
+    private $MS_USER = "root";
+    private $MS_PWD = "";
+    public function getPGDB() 
+    {
+        return $this->PG_DBASE;
+    }
+
+    public function getPGConnector() 
+    {
+        $connect = pg_connect("host=" . $this->PG_HOST . " dbname=" . $this->PG_DBASE . " user=" . $this->PG_USER . " password=" . $this->PG_PWD);
+        if (!$connect)
+        {
+            die("PGDB Connection failed.");
+        }
+        return $connect;
+    }
+
+    public function getMYSQLConnection() 
+    { 
+        $host=$this->MS_HOST;$mysql_user=$this->MS_USER;$mysql_pwd=  base64_decode($this->MS_PWD);$mysql_db=$this->MS_DBASE;
+        if(strpos($_SERVER['HTTP_HOST'],'mapmyindia.')!==false)
+        {
+           $host=$this->MS_HOST_PROD;$mysql_user=$this->MS_USER_PROD;$mysql_pwd=  base64_decode($this->MS_PWD_PROD);$mysql_db=$this->MS_DBASE_PROD; 
+        }
+        $connect = mysql_connect($host, $mysql_user, $mysql_pwd);
+        mysql_select_db($mysql_db, $connect) or die("Database Connection failed.".mysql_error());
+        return $connect;
+    }
+    public function getMYSQLPreparedConnection() 
+    { #echo "yes<hr>";die;
+        $user_agent=$_SERVER['HTTP_USER_AGENT'];
+        if(strpos(strtolower($user_agent),'bot')!==false) return FALSE;
+        
+        $host=$this->MS_HOST;$mysql_user=$this->MS_USER;$mysql_pwd= base64_decode($this->MS_PWD);$mysql_db=$this->MS_DBASE;
+        
+        if(strpos($_SERVER['HTTP_HOST'],'mapmyindia')!==false)
+        {
+           $host=$this->MS_HOST_PROD;$mysql_user=$this->MS_USER_PROD;$mysql_pwd=  base64_decode($this->MS_PWD_PROD);$mysql_db=$this->MS_DBASE_PROD; 
+        }
+        #die($host."#".$mysql_user."#".$mysql_pwd."#".$mysql_db);
+        $connect = mysqli_connect($host,$mysql_user, $mysql_pwd, $mysql_db);
+        if (mysqli_error($connect)) 
+        {
+            die("Unable to connect, try later");
+	    header('HTTP/1.1 404 Not Found', true, 404);
+            exit();
+            return false;
+        }
+        return $connect;
+    }
+
+
+    public function freeResult($res) 
+    {
+        $isFree = false;
+        try 
+        {
+            $isFree = pg_free_result($res);
+        } 
+        catch (Exception $e) 
+        {
+            echo $e;
+        }
+        return $isFree;
+    }
+    function logs($history)
+    {    
+	$ses_id = session_id().date('mdY');$user_agent=$_SERVER['HTTP_USER_AGENT']; 
+	if($_SESSION['last_history']!=$history && $history && $ses_id && strpos($user_agent,'bot')===false) 
+	{
+            $ip=($_SERVER['HTTP_X_FORWARDED_FOR']?$_SERVER['HTTP_X_FORWARDED_FOR']:$_SERVER['REMOTE_ADDR']);
+            $data=date('H:i')."   ".$ip."   ".($_SESSION['user_name']?"(User:".$_SESSION['user_name'].")":"").$history."\n";
+            $fl="../tmp/error-logs/issues.log";
+            if($_SERVER['HTTP_HOST']=='maps.mapmyindia.com') $fl="/mnt/vol1/error-logs/issues.log";
+            error_log($data,3,$fl);
+	    /*
+            $ltime=date('Y-m-d H:i');$ct=date('d:H');$history.="@$ct";
+            $ip=($_SERVER['HTTP_X_FORWARDED_FOR']?$_SERVER['HTTP_X_FORWARDED_FOR']:$_SERVER['REMOTE_ADDR']);
+            $con = self::getMYSQLPreparedConnection();
+            $user=mysqli_real_escape_string($con,$_SESSION['user_name']);
+            $ip=mysqli_real_escape_string($con,$ip);
+            $user_agent=mysqli_real_escape_string($con,$_SERVER['HTTP_USER_AGENT']);
+            $history=mysqli_real_escape_string($con,$history);
+            $host=mysqli_real_escape_string($con,$_SERVER['SERVER_NAME']);
+            $referal=str_replace("https://".$host,'',$_SERVER['HTTP_REFERER']);//if(strpos($referal,$host)!==false) $referal="";
+            $referal=mysqli_real_escape_string($con,$referal);
+            $sql="insert into logs(user,time,login_time,history,session_id,referal,ip,user_agent) values('$user','$ltime','$ltime','$history','$ses_id','ref:$referal,$referal','$ip','$user_agent') ON DUPLICATE KEY UPDATE history=concat('$history',';',REPLACE(history,'$history','')),time='$ltime',user='$user'";
+            mysqli_query($con,$sql);	
+            if($_SESSION['user_name']=='balmukand' && mysql_error ()) die(mysql_error ());
+            mysqli_close($con);*/
+            unset($_SESSION['ref']);
+            $_SESSION['last_history']=$history;
+	}
+    }
+}
+
+?>
+
+
+
