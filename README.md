@@ -1441,5 +1441,1995 @@ class DBConnector
 
 ?>
 
+----------index.ctp-------
+<?php
+$obcat=1;
+function callback($buffer)
+{
+  return (str_replace(array("\n", "\r","\t"),"", $buffer));
+}
+
+
+if($obcat) ob_start("callback");
+/**
+ * 
+ * version 7.1 chnages ##history in search,move app text,current location asking in direction search##191118
+ * dated 28 Apr 2016
+ * @author  balmukand
+ * @copyright   Copyright (c) CE Info System Pvt. Ltd.(MapmyIndia),(http://m.mapmyindia.com/maps)
+ * chmod -R 777 app/tmp/cache/
+ */
+#session_destroy();
+#die($_SERVER['HTTP_USER_AGENT']."!".$_SERVER['LOCAL_ADDR']."!".$_SERVER['LOCAL_PORT']."!".$_SERVER['REMOTE_ADDR']);
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+header('Pragma: no-cache');
+session_start();
+error_reporting(0);
+
+
+$ref=$_SERVER['HTTP_REFERER'];
+if($ref && strpos($ref,'maps.mapmyindia.com')===false) $_SESSION['ref']=$ref;
+if($_SERVER['HTTP_X_FORWARDED_PROTO']!== "https" && strpos($_SERVER['HTTP_HOST'],'aps.mapmyindia')){$redirect = 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];header('HTTP/1.1 301 Moved Permanently');header('Location: ' . $redirect);exit();}
+  function sanitize_output($buffer) {
+    $search = array('/\>[^\S ]+/s',  '/[^\S ]+\</s','/(\s)+/s','/<!--(.|\s)*?-->/');$replace = array('>','<','\\1', '');
+    $buffer = preg_replace($search, $replace, $buffer);return $buffer;
+  }
+
+//ob_start("ob_gzhandler");
+$_SESSION['popup'] = ((!empty($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'],$_SERVER['HTTP_HOST']) === FALSE) || !empty($_COOKIE['popupState'])) ? 1 : 0;
+if(strpos($cur_url,'fbclid')){
+    $nurl=explode('fbclid',$cur_url);
+    header('HTTP/1.1 301 Moved Permanently');header('Location: ' .substr($nurl[0],0,-1));exit();
+}
+require_once 'globals.php';
+$_SESSION['auth']=1;
+$UFL = 0;
+$today=date('Y-m-d');
+if($_GET['1']==1) { $UFL = 1; }
+require_once realpath(dirname(__FILE__) . '/Mobile_Detect.php');
+$detect = new Mobile_Detect;
+$mobile = ($detect->isMobile()) ? 1 : 0;
+$HTTP_USER_AGENT = strtolower($_SERVER['HTTP_USER_AGENT']);
+unset($_SESSION['deviceTp']);
+if((bool) strpos($HTTP_USER_AGENT, 'android')) $_SESSION['deviceTp'] = 'android';
+else if(!$android && ((bool) strpos($HTTP_USER_AGENT, 'iphone') || (bool) strpos($HTTP_USER_AGENT, 'ipod'))) $_SESSION['deviceTp'] = 'iphone';
+#print_r($_SESSION);die;
+
+$deviceType = str_replace('=', '', base64_encode('mapmyindia@'.$mobile.'@mapmyindia'));
+$og=explode("data=",$cur_url);$cntr="center=24.595939499830784,77.22556114196777&zoom=4&markers=24.595939499830784,77.22556114196777";
+$near_txt="me";
+
+/*if(!$_SESSION['latlng'] && !$og[0] && strpos(strtolower($user_agent),'bot')===false)
+{
+    try{
+    if(!$con){   
+        require_once 'DBConnector.php';
+        $db = new DBConnector;
+        $con = $db->getMYSQLPreparedConnection();
+    }
+    $sql = "select lat,lng from ip_lat where ip='" . ($_SERVER['HTTP_X_FORWARDED_FOR']?$_SERVER['HTTP_X_FORWARDED_FOR']:$_SERVER['REMOTE_ADDR']) . "' limit 1";
+    if ($result=mysqli_query($con, $sql)){ $row=mysqli_fetch_array($result,MYSQLI_ASSOC);$_SESSION['latlng'] = $row["lat"] . "," . $row["lng"];}
+    if($con) mysqli_close($con);
+    }catch(Exception $e) {}
+}*/
+if($_SESSION['latlng']) {$latlng = explode(',', $_SESSION['latlng']);$latn=$latlng[0];$lngn=$latlng[1];}
+else  {$latn = '28.7041';$lngn = '77.1025';} 
+if(strpos($og[0], 'near-me') && strpos($og[0], 'place-')===false) $cur_url ="place-". basename($cur_url).'?@zdata='.base64_encode($latn.'+'.$lngn.'+17++'.str_replace('-near-me', '', basename($cur_url)));
+if($og[1]){$og_v=  base64_decode(str_replace('ed','',$og[1]));}
+$audd="";
+if(strpos($og[0],'place-')===0 || strpos($_SERVER['REQUEST_URI'], 'near-me') == true)
+{
+  //if(strpos($cur_url, 'near-me') == true) $cur_url = $string;
+  
+  $exp_str =explode('?@zdata=',$_SERVER['REQUEST_URI']);
+  $dcodedstrng=base64_decode($exp_str[1]);
+  $exp_pipe=explode('|',$dcodedstrng);
+  $model_filter=$exp_pipe[3];
+  if(strpos($model_filter,"hyundai")!==false){
+    $model_filter='Hyundai';
+  }else if(strpos($model_filter,"audi")!==false){
+    $ftl=1;
+    // echo "<script>if(timer) clearInterval(timer);</script>";
+    $model_filter='Audi';
+    $audd='style="display:none;"';
+    
+  }
+  //die($model_filter);
+  $img_c=explode('+',$og_v);$cntr="center=$img_c[0],$img_c[1]&zoom=$img_c[2]&markers=$img_c[0],$img_c[1]";
+  if($img_c[3]!=='0' || ($cur_url && substr($cur_url,0,1)=='@' && strlen($cur_url)==7))
+  { 
+    
+    require_once realpath(dirname(__FILE__ ) . '/details.php');
+        $near_txt=str_replace('place-','',str_replace(['?@z','@z'],'',substr($og[0],(strpos($og[0],'-near-')?strpos($og[0],'-near-')+6:strpos($og[0],'place-')),strlen($og[0]))));
+        
+        $details=details::info($cur_url,1,$model_filter);$script;
+        #print_r($details);die;
+        if(!empty($details['html'])) 
+        {
+          $infoHtml=$details['html'];$ogstar=($details['star']?"[".$details['star']."] ":"");
+          if($details['title']) $title=$details['title'];
+          $cntlatlng=explode(',',$details['cood']);
+          if($details['cood']) $cntr="center=$cntlatlng[0],$cntlatlng[1]&zoom=17&markers=$cntlatlng[0],$cntlatlng[1]";
+          $oginfo=explode(', ',$title);
+          $ogtitle=ctype_digit($oginfo[0])?$title:$oginfo[0];
+          $og_desc=$ogstar.implode(' ',array_slice($oginfo,1));
+          if($details['eloc']) $ogsimilar='<link rel="canonical" href="https://maps.mapmyindia.com/@'.$details['eloc'].'" />';
+          }
+          else 
+          {
+            
+            $infoHtml=$details;$title=$og_keywrd=$og_desc=$description=$keywords="";
+          }
+          
+          #die($infoHtml);
+        $drag=1;
+        if(strpos($infoHtml,'Network Issue'))$infoHtml="";
+        if(!$infoHtml)
+        {
+          require_once realpath(dirname(__FILE__ ) . '/404.php');
+          header("HTTP/1.0 404 Not Found");$description='';$og_url='';$keywords='';$title='';$infoHtml=$infores;$script="<script>window.history.pushState('not-found' , '', 'not-found');</script>";
+          
+        }
+      }
+      #print_r($img_c);die;
+    }
+    else if($cur_url=='my-world-data')
+    {
+      $listId =  401;
+      $userId = (!empty($_SESSION['userId'])) ? $_SESSION['userId'] : 401;
+      $own = ($_SESSION) ? 1 : 0;
+      require_once realpath(dirname(__FILE__ ) . '/my_world.php');
+      $world = new my_world();
+      require_once realpath(dirname(__FILE__ ) . '/Auth_login.php');
+      $object = new Auth_login();
+      $infoHtml=$world->getworld($object,$page);
+      // print_r($html);die('dd');
+    }
+    
+    if(strpos($og[0],'-near-')!==false){$img_c=explode(',',$og_v);$cntr="center=$img_c[1],$img_c[0]&zoom=11&markers=$img_c[1],$img_c[0]";}
+    if(strpos($og[0],'direction-')!==false)
+    {
+      $img_c=explode('+',$og_v);$img_fv=explode(',',urldecode($img_c[1]));$img_tv=explode(',',urldecode($img_c[3]));$cntr="center=$img_tv[1],$img_tv[0]&zoom=4&markers=$img_tv[1],$img_tv[0]|$img_fv[1],$img_fv[0]";
+      
+    }
+    if($cntr) $og_url="https://maps.mapmyindia.com/still_image?size=300x200&ssf=0&".$cntr;
+      if(substr($cur_url,0,1)=='?' && strlen($cur_url)==7) {header('HTTP/1.1 301 Moved Permanently');header('Location: ' . str_replace('?','@',$cur_url));exit();}
+      
+      if(substr($cur_url,0,1)=='@' && strlen($cur_url)==7)
+      {
+        
+        require_once realpath(dirname(__FILE__ ) . '/details.php');
+        $details=details::info($cur_url,1);
+        $cat_dis = 1;    #print_r($details);die;
+        if(!empty($details['html'])) 
+        {
+          $infoHtml=$details['html'];$ogstar=($details['star']?"[".$details['star']."] ":"");
+          $oginfo=explode(', ',$title);
+          $cntlatlng=explode(',',$details['cood']);
+          if($details['cood']) $cntr="center=$cntlatlng[0],$cntlatlng[1]&zoom=17&markers=$cntlatlng[0],$cntlatlng[1]";
+          $ogtitle=ctype_digit($oginfo[0])?$title:$oginfo[0];
+          $og_desc=$ogstar.implode(' ',array_slice($oginfo,1));
+          if($details['title']) $title=$details['title'];
+          if($details['eloc']) $ogsimilar='<link rel="canonical" href="https://maps.mapmyindia.com/@'.$details['eloc'].'" />';
+          }  
+        }
+        else if(strpos($cur_url,'@')===false && $cur_url && !$title) {$title=str_replace('?,','',str_replace('+','',str_replace('-',' ',  strip_tags(ucwords($cur_url)))));$description=$title;}
+        if(strpos($actual_link,'@review=')!==false||strpos($actual_link,'review?')!==false || strpos($actual_link,'review%3D')!==false)
+        {
+          $user_save=explode('@',str_replace('~',' ',urldecode($actual_link)));
+          $pinId=$user_save[1];
+          if($pinId)
+          {
+            if(!$object){
+              require_once realpath(dirname(__FILE__ ) . '/Auth_login.php');
+              $object = new Auth_login();}
+              $response=$object->pin_details($pinId,'review',401);
+              $placeId=$response['response']['placeId'];
+              $imgurl=exploreApi_v21;
+              $imgurl.= $placeId."/assets";
+              $response_call_img=globals::curlWithHeader('get','',$imgurl);
+              $response_img= json_decode(json_encode($response_call_img),TRUE);
+              #echo "<pre>"; print_r($response_img);die($imgurl);
+              foreach ($response_img['response']['assets'] as $arr) {
+                if($arr['type']=="place") $img_og = $arr['imageObject']['original'];
+              }
+              
+              #echo "<pre>"; print_r($response);die;
+              $addedBy=$response['response']['addedBy'];
+              $place_name=$response['response']['placeName'];
+              $place_lat=$response['response']['latitude'];
+              $place_lng=$response['response']['longitude'];
+              $pin_story=$response['response']['description'];
+              $pin_rate=$response['response']['rating'];
+              if($pin_rate){
+                $og_star=$pin_rate." ";
+                for($i=0;$i<5;$i++)
+                {
+                  if($i<$pin_rate) $og_star.="★"; else $og_star.="☆";                       
+                }
+              }
+              #echo "<pre>"; print_r($response);die;
+            }
+            #print_r($user_save);die;
+            if($place_name) $p_name = "of ".$place_name;
+            if($addedBy) $n_name = " by ".$addedBy;
+            $title="Mapmyindia Move Review ".$p_name.$n_name;
+            #$title="Mapmyindia Move review of ".$place_name." by ".$addedBy;
+            $description=$title." - ".$pin_story;
+            if($pin_rate) $rate_st = " Rating: ".$og_star; else $rate_st = '';
+            if($pin_story) $story = " Review: ".substr($pin_story,0,50)."...more";
+            $og_desc=$rate_st.$story;
+            #$og_desc=" Rating: ".$og_star." Review: ".substr($pin_story,0,50)."...more";
+            if($img_og)$og_url=$img_og; 
+            elseif($place_lat) $og_url="https://maps.mapmyindia.com/still_image?size=300x200&ssf=0&zoom=14&center=$place_lat,$place_lng";
+            }
+            
+            if(strpos($actual_link,'report@')!==false)
+            {
+              $user_save=explode('@',str_replace('~',' ',urldecode($actual_link)));
+              $pinId=$user_save[3];
+              if($pinId)
+              {
+                if(!$object){
+                  require_once realpath(dirname(__FILE__ ) . '/Auth_login.php');
+                  $object = new Auth_login();}
+                  $response = $object->Place_report(401, 401, 401, $pinId, 401, 401, 0);
+                  #print_r($response);die;
+                  $addedBy=$response['response']['report']['addedByName'];
+                  $place_name=$response['response']['report']['placeName'];
+                  $place_lat=$response['response']['report']['latitude'];
+                  $place_lng=$response['response']['report']['longitude'];
+                  $cat= $response['response']['report']['parentCategory'];
+                  $ccat= $response['response']['report']['childCategory'];
+                  $cat_name= $response['categories'][$cat];
+                  $scat_name= $response['categories'][$cat."-".$ccat];
+                  #$pin_story=$response['data'][0]['pin_story'];
+                  #$cat_name=$response['data'][0]['cat_name'];
+                  #$scat_name=$response['data'][0]['child_cat_name'];
+                  $title=$user_save[4]." Reported ".$user_save[3];
+                  $description=$title." - ".$user_save[6];
+                  if($scat_name && $cat_name) $cat_body = $scat_name." - ".$cat_name;
+                  if($place_name) $p_name = "at ".$place_name;
+                  if($addedBy) $n_name = " by ".$addedBy;
+                  $title="Mapmyindia Move Report ";
+                  #$og_desci=$addedBy." Reported - ".$cat_name." [$scat_name]";
+                  $og_desc="Checkout ".$cat_body." issue reported ".$p_name.$n_name;
+                  if($place_lat) $og_url="https://maps.mapmyindia.com/still_image?size=300x200&ssf=0&zoom=17&center=$place_lat,$place_lng";
+                    #echo "<pre>"; print_r($response);die;
+                  } 
+                }
+                if(strpos($actual_link,'checkin@')!==false){
+                  $user_save=explode('@',urldecode(str_replace('~',' ',$actual_link)));$title=$user_save[3]." CheckedIn ".$user_save[1];$description=$title." - ".$user_save[5];$og_desc=$user_save[5];
+                  $og_url="https://maps.mapmyindia.com/still_image?size=300x200&ssf=0&zoom=17&center=".$user_save[4];}
+                  if($_SESSION['deviceTp']=='android')
+                  {
+                    $store_link="https://play.google.com/store/apps/details?id=com.mmi.maps&hl=en";
+                  }
+                  else 
+                  {
+                    $store_link="https://itunes.apple.com/in/app/map-directions-local-searches-travel-guide/id723492531?mt=8";
+                  }
+                  /*require_once 'maplayer.php';*/
+                  ?>
+<!DOCTYPE html>
+<html lang="en">
+  
+  <head>
+    <meta charset="utf-8">
+    <title><?php if($title) echo preg_replace('/[^A-Za-z0-9\. -]/', '',str_replace('$','/',urldecode (strip_tags($title)))); else echo "MapmyIndia Maps, Driving Directions, Nearby Local Places";?></title> 
+    <meta name="description" content="<?php if($description) echo str_replace('$','/',urldecode (strip_tags($description))); else echo "Get directions to any place with lives traffic updates. Find nearby businessses, restaurants, hotels, petrol pumps, Parking, Atms and more.Explore now!.";?>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <meta name="keywords" content="<?php if($keywords) echo str_replace('$','/',urldecode (strip_tags($keywords))); else echo "move, map of india, india map, map directions, search nearby, live traffic, maps, map, nearbuy, near me, map location, search location, location, location on map";?>">
+    <meta name="author" content="">
+    <meta name="theme-color" content="#2a445b" />
+    <meta name="apple-mobile-web-app-capable" content="no">
+    <meta property="og:image" itemprop="image" content="<?php echo strip_tags($og_url);?>" />
+    <meta property="og:image:width" content="256" />
+    <meta property="og:image:height" content="256" />
+    <meta property="og:title" content="<?php if($title) echo str_replace('$','/',urldecode (strip_tags(($ogtitle?$ogtitle:$title)))); else echo "MapmyIndia: India Map with Live Traffic, Get Maps Directions, Search Location Nearby.";?>">
+    <meta property="og:description" content="<?php if( $og_desc) echo str_replace('$','/',urldecode (strip_tags($og_desc))); else echo "India map with live traffic, location search, maps directions. Search nearby restaurants , hotels, parking, petrol pumps on MapmyIndia Maps.";?>">
+    <meta property="og:keywords" content="<?php if($og_keywrd) echo str_replace('$','/',urldecode (strip_tags($og_keywrd))); else echo "maps, map, map of india, india maps, live maps, live traffic, location, search location, map location.";?>">
+    <meta property="twitter:title" content="<?php if($title) echo str_replace('$','/',urldecode (strip_tags(($ogtitle?$ogtitle:$title)))); else echo "MapmyIndia: India Map with Live Traffic, Get Maps Directions, Search Location Nearby.";?>">
+    <meta property="twitter:description" content="<?php if( $og_desc) echo str_replace('$','/',urldecode (strip_tags($og_desc))); else echo "India map with live traffic, location search, maps directions. Search nearby restaurants , hotels, parking, petrol pumps on MapmyIndia Maps.";?>">
+    <meta name="twitter:image" content="<?php echo strip_tags($og_url);?>" />
+    <link rel="apple-touch-icon" href="images/mmi-logo.png">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon">
+    <?php echo $ogsimilar; if($mobile) {?>
+      <link rel="manifest" href="manifest.json">
+      <meta name="apple-mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-status-bar-style" content="black">
+      <meta name="apple-mobile-web-app-title" content="Move">
+      <link rel="apple-touch-icon" href="images/ic_move_logo.png">
+      <meta name="msapplication-TileImage" content="images/ic_move_logo.png">
+      <meta name="msapplication-TileColor" content="#2F3BA2">
+      <?php } ?>
+      <base href="<?php echo $root?>/">
+      <meta name="google-site-verification" content="ZvTidYVRS_7GDM4ymrQaOKMRXWFmfC3E9vf84aRkJYc" />
+      <link rel="stylesheet" href="<?php echo _CSS_; ?>/?<?php echo (LOG?LOG."=":CACHE_DT); ?>.css" media="all">
+      <link rel="stylesheet" href="<?php echo _CSS_; ?>/leaflet-cluster.css">
+      <?php
+    /*
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/bootstrap.min.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/themify-icons.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/font-awesome.min.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/jquery-ui.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/resultsx.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/map.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/leaflet-mmi.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/themify-icons.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/owl.carousel.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/slider.css">
+    <link rel="stylesheet" href="<?php echo _CSS_; ?>/jquery.mCustomScrollbar.css">
+    */
+    if(strpos($_SERVER['HTTP_HOST'],'.mapmyindia.com')!==false)
+    {
+      /*<!-- Global site tag (gtag.js) - Google Analytics -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=UA-17882747-9"></script>
+      <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'UA-17882747-9');
+      </script>*/
+      ?>    
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-P8HWD5J');</script>
+    <!-- End Google Tag Manager -->
+    <?php }  ?>
+    
+  </head>
+  <body>
+    <?php if($config_files['diwali']['date_start']<=$today && $config_files['diwali']['date_end']>=$today) {?>
+      <div class="deep-bottom-img">
+        <div class="deep-img-repeat"></div>
+      </div>
+      <?php }?>
+      <div id="error"></div>
+      <div class="loaderDiv1" id="loader">
+        <div class="spinner bottomSpinner">
+          <span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" focusable="false">
+            <circle cx="14" cy="14" r="12" fill="none" stroke="#000" stroke-width="2" opacity=".15"/>
+            <circle pathLength="1" cx="14" cy="14" r="12" fill="none" stroke="#e52629" stroke-width="3" stroke-dasharray="27 57" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+      </div>
+    </div>
+    <!--div id="loader"></div-->
+    <div id="z-popup"></div>
+    <div style="display: none;" id="top_modal"></div>
+    <div style="display: none;" id="error_modal" class="show_modal"></div>
+    <div style="display: none;" id="modal_new"></div>
+    <div class="success-message-alert"></div>
+    <div class="eloc-message-alert"></div>
+    <div id="show_pano"></div>
+    <div id="eloc_tap"></div>
+    <div id="tap_dv" onclick="tap_action()">
+      <img src="images/poi_brand.png" style="width:30px">
+      <span>Move map to adjust & Click here</span>
+    </div>
+    <div id="uap_tap_dv" onclick="tap_addPlace()" style="display:none;"  >
+      <img src="images/poi_brand.png" style="width:30px">
+      <span>Move map to adjust</span>
+      <div class="digi-tooltip add-bus-tooltip" id="eloc_tap_dv" style="display:none;">
+        <div class="create-eloc-sec" id="success_sec" style="display: block;bottom: 28px;left: -120px;">
+          <ul class="addp-search-item">
+            <li class="addp-map-marker"><i class="fa fa-map-marker"></i> Current Marker Location</li>
+            <li id="indexplacename_bus" class="iaddp-name"></li>
+            <li id="indexplaceaddr_bus" class="iaddp-addr"></li>
+          </ul>
+          <div class="buttonDiv"><button class="btn btn-primary" >Done</button></div>
+        </div>
+      </div>
+    </div>
+    <div class="whatsnewWidgetSec" style="display:none;">
+      <div class="whatsnewOverlay"></div>
+      <div class="whatsnewMainWidget">
+        <div class="whatsnewMainWidgetHeader clearfix">
+          <h2>What's New</h2>
+          <a href="javascript:void(0)" onclick="$('.whatsnewWidgetSec').hide();" class="widgerClose">
+            <i class="material-icons">close</i>
+          </a>
+        </div>
+        <div class="whatsnewMainWidgetBody">
+          <div class="whatsnewListSec">
+            <ul class="whatsnewList">
+              
+              </ul>
+            </div>
+          </div>  
+        </div>
+      </div>
+      <div class="cookiesSec" style="display:none">
+        <div class="cookiesImg">
+          <img src="images/cookie.png" alt="" />
+        </div>
+        <div class="cookiesText">
+          <h2>We use cookies</h2>
+          <p>By using our site you agree to our use of cookies to deliver better site performance with a responsive map-experience.</p>
+          <button class="btn btn-cookies" id="cookieClose">Got it</button>
+        </div>
+      </div>
+      <div id="mapLayerTest"></div>
+      
+      <style>
+        .covid-trigger-img {
+          width: 72px;
+          height: 72px;
+          position: fixed;
+          right: 10px;
+          top: 60px;
+          cursor: pointer;
+          z-index: 1;
+        }
+        </style>
+    <div class="covidTrigMain">
+      <a style="display:none;" onclick="$('.get-eloc-sec-bus,.new-category-sec').show();$('.covid-trigger-img').hide();" class="covid-trigger-img">
+        <img src="images/corona/fab_corona.png" alt="" />
+        <span>COVID - 19 Guide</span>
+      </a>
+    </div>
+    
+    <div class="canvas" style="">
+      
+      <div class="top-header">
+        
+        
+        <!-- profile-section -->
+        
+        <div class="profile" id='login_dv' <?php echo $audd; ?>>
+          <?php 
+     echo $menu_html[0];
+     
+     ?>
+    </div>
+    <?php
+
+
+if($mobile==0){
+  ?>
+    <div class="download-app-trigger" <?php echo $audd; ?>>
+            <div class="dropdown">
+                <button class="btn btn-profile dropdown-toggle" type="button" data-toggle="dropdown" title="Move" alt="Move">
+                                  <div class="get-app-icon">
+                    <img src="images/ic_move_logo.png?<?php echo CACHE_DT; ?>" alt="" />
+                  </div>
+                                  <div class="get-app-text" alt="Get the app">
+                                    <span class="profile-name">Get the app</span>
+                                    <span class="down-arrow"><i class="ti-angle-down lhid" alt="Map app"></i></span>
+                                  </div>
+              </button>
+              <ul class="dropdown-menu">
+                  <li><a href="https://play.google.com/store/apps/details?id=com.mmi.maps&hl=en" target="_blank" rel="nofollow"><i class="fa fa-android"></i> Android</a></li>
+                <li><a href="https://itunes.apple.com/in/app/map-directions-local-searches-travel-guide/id723492531?mt=8" target="_blank" rel="nofollow"><i class="fa fa-apple"></i> iOS</a></li>
+        <li><a id="share_locations" class="share-poi share-eloc" onclick="share('https://maps.mapmyindia.com/getMove','share_link')" alt="Share Location" class="share_btn control-slide share-poi-new"><i class="material-icons">share</i> <span>Share App</span></a></li>
+              </ul>
+            </div> 
+       </div>
+       <div class="scale-sec whats-new-trig lhid">
+            <div class="map-c-item clearfix">
+                <a title="What's new" onclick="whatsNewPopup()">
+                    <div class="red-dot red-mark" style="display: none;"></div>
+                    <img src="images/ic_gift.png" style="width: 18px;padding-top: 9px;"></a>
+            </div>
+        </div>
+        <div class="scale-sec lhid">
+            <div class="map-c-item clearfix">
+                <a id="area_dv" title="Measure Area&#13; Click to Start/Remove&#13; Double click to stop on map"><img src="images/ic_area.png" alt="" style="width: 24px;padding-top: 6px;"/></a>
+                <a  nofollow="" title="Measure Distance&#13; Click to Start/Remove&#13; Double click to stop on map" id="scale_dv"><i class="material-icons lhid">straighten</i></a>
+                <a class="map-zoom-out" title="Print" nofollow="" onclick="load_module('print')"><i class="material-icons lhid">print</i></a>
+            </div>
+        </div>
+    <div class="scale-sec lhid" id="fscrn_dv" >
+            <div class="map-c-item clearfix">
+                <a title="Fullscreen"><img src="images/ic_fullscreen.png" style="width: 18px;padding-top: 9px;"></a>
+            </div>
+    </div>
+<!--    <div class="download-app-trigger election-trigger" title="Checkout the Indoor Map" >
+        <div class="dropdown">
+        <button class="btn btn-profile dropdown-toggle" type="button" data-toggle="dropdown" title="Move" alt="Move">
+          <div class="get-app-icon">
+            <img src="images/ic_multi_floor.png" style="height: 32px;margin-top: 4px;margin-left: 13px;">
+          </div>
+          <div class="get-app-text" style="margin-left: 10px;padding-left: 5px;border-left: 1px solid #efefef;">
+              <span class="profile-name"><a id="multi_dv"  style="color: #212121;">Indoor Map</a></span>
+          </div> 
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a id="pragati-maidan" onclick="  indoormp='pragati-maidan'; maps.layerMarker[1].fire('click');map.panTo([28.616698,77.243695]);" target="_blank" rel="nofollow">Pragati Maidan</a>
+            </li>
+            <li>
+                <a id="ind_expo" onclick=" indoormp='ind_expo' ; maps.layerMarker[2].fire('click');map.panTo([28.463059,77.497757]);" target="_blank" rel="nofollow">India Expo Mart</a>
+            </li>
+            <li>
+                <a id="dlf_pro" onclick=" indoormp='dlf_pro';  maps.layerMarker[0].fire('click');map.panTo([28.542363,77.156028]);" target="_blank" rel="nofollow">Dlf Promenade</a>
+            </li>
+            <li>
+                <a id="biec" onclick=" indoormp='biec'; maps.layerMarker[3].fire('click');map.panTo([13.062753,77.474869]);" target="_blank" rel="nofollow">BIEC</a>
+            </li>
+        </ul>
+
+        </div>
+     </div>-->
+    <?php
+     if( $mobile==0 )
+        { ?>
+     <style><?php echo $csnotcsss = file_get_contents(_CSS_."/notification.css");  ?></style>
+
+
+     <div class="download-app-trigger mapNot" id="notication_id" style="display:none;" >
+         <div class="dropdown">
+        <button class="btn btn-profile dropdown-toggle" type="button" data-toggle="dropdown">
+        <i class="material-icons">notifications</i>
+
+        <span class="badge" id="not_cnt" style="display:none;">0</span>
+       </button>
+        <div class="dropdown-menu mainMapNotSec">
+        <h2>Notifications <div id="ldr" class="NotLdr"><img src="images/loader_2_2.gif"></div></h2>
+        <ul class="mapNotList" id="notif_data">
+
+        </ul>
+        </div>
+        </div>
+     </div>
+    <!--Real View-->
+       <div class="download-app-trigger election-trigger realviewMain" id="realv_trig">
+
+         <div class="tooltip-info">
+           
+            <div class="tooltip-sec">
+                <p>Get a full panoramic view of the real world
+                    with Mapmyindia's real view right
+                    from the comfort of where you are.
+                </p>
+            </div>
+         </div>
+        <div class="dropdown" > 
+        <button id="realv_trig"  class="btn btn-profile dropdown-toggle" type="button" data-toggle="dropdown" title="Move" alt="Move" style="width:130px;">
+          <div class="get-app-icon">
+            <img src="images/360_Real_View.png" style="height: 32px;margin-top: 4px;margin-left: 13px;">
+          </div>
+          <div class="get-app-text" style="margin-left: 10px;padding-left: 5px;border-left: 1px solid #efefef;">
+              <span class="profile-name"><a id="multi_dv"  style="color: #212121;">Real View</a></span>
+          </div> 
+        </button>
+        <ul class="dropdown-menu" id="real_drop">
+            <li>
+                <a  target="_blank" rel="nofollow">Okhla Drive</a>
+            </li>
+        </ul>
+
+        </div>
+     </div>
+   
+ 
+    
+    <?php
+     }
+    }
+    ?>
+    <?php 
+        /*election2019*/
+        if($config_files['election']['status']=1) {
+    ?>
+    <div id="election_modal" class="election_modal"></div>
+    <style>
+    
+/**election **/
+
+.download-app-trigger.election-trigger .btn-profile { border-radius: 30px;width: 160px;}
+.election-trigger .get-app-text {float: left; margin-left: 4px;}
+.election-trigger .get-app-switch {float: right;margin-top: 8px;margin-right: 10px;}
+.switchBtn {float: right;}
+.switchBtn .switch { position: relative;display: inline-block;width: 40px;margin-top: 0;margin-bottom: 0;}
+.switchBtn .switch input {display: none;}
+ .switchBtn .slider {position: absolute; cursor: pointer;top: 0;left: 4px; right: 0;bottom: 0;background-color: #ccc;-webkit-transition: .4s; transition: .4s; }
+.switchBtn .slider:before {position: absolute;content: "";height: 18px; width: 18px;left: 1px;bottom: 1px;background-color: white;-webkit-transition: .4s;transition: .4s;         }
+.switchBtn input:checked+.slider { background-color: #1a8ff7;}
+.switchBtn input:focus+.slider {box-shadow: 0 0 1px #2196F3;}
+.switchBtn input:checked+.slider:before {-webkit-transform: translateX(26px);-ms-transform: translateX(26px);transform: translateX(26px); right: 27px;left: auto;}
+.switchBtn .slider.round { border-radius: 34px;}
+.switchBtn .slider.round:before { border-radius: 50%;}
+
+.download-app-trigger.realviewMain {
+    position: relative;
+    cursor: pointer;
+}
+.download-app-trigger.realviewMain .tooltip-info {
+    display: inline-block;
+    position: absolute;
+    right: 5px;
+    z-index: 1;
+    top: 7px;
+}
+.download-app-trigger.realviewMain .tooltip-info a {
+    color: #212121;
+    padding: 5px;
+}
+.download-app-trigger.realviewMain .tooltip-info .tooltip-sec {
+    width: 280px;
+    text-align: left;
+    right: 0;
+    margin-top: 32px;
+    background: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    color: #212121;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    display: none;
+}
+.download-app-trigger.realviewMain .tooltip-info .tooltip-sec:before {
+    display: none;
+}
+.download-app-trigger.realviewMain:hover .tooltip-sec {
+    display: block;
+}
+
+/*.election-trigger .tooltip-info a:hover + .tooltip-sec {
+    display: block;
+}*/
+
+@media only screen and (max-width:767px) {
+  .download-app-trigger.realviewMain {
+    display: block;
+  position: fixed;
+  right: 10px;
+  top: 82%;
+  margin-top: -65px;
+  z-index: -1;
+}
+.realviewMain .get-app-text {
+    display: none;
+}
+.download-app-trigger.realviewMain .btn-profile {
+    width: 36px !important;
+    height: 36px;
+    border-radius: 50%;
+}
+.realviewMain .get-app-icon {
+    width: 36px !important;
+}
+.realviewMain .get-app-icon img {
+    width: 24px;
+    height: 24px !important;
+    margin-top: 8px !important;
+    margin-left: 3px !important;
+}
+.add-place-modal.real-view-modal .modal-body .multiLevel-body {
+    height: 80vh;
+}
+}
+
+
+    </style>
+    <script>
+
+    
+/*  election*/
+var clickdata='';
+window.addEventListener("load", function()
+{ 
+   
+    $(document).off("click","#election");
+    $(document).on("click","#election",function(event)  
+    {   
+         if($("#election_checkbox").prop("checked") == true){
+                $("#election_checkbox").prop('checked', false);
+                if(typeof GeoDataLayer77 !== 'undefined') {
+                if(border_layer)map.removeLayer(border_layer);
+                map.removeLayer(GeoDataLayer11);
+                map.removeLayer(GeoDataLayer22);
+                map.removeLayer(GeoDataLayer33);
+                map.removeLayer(GeoDataLayer44);
+                map.removeLayer(GeoDataLayer55);
+                map.removeLayer(GeoDataLayer66);
+                map.removeLayer(GeoDataLayer77);
+                $("#election_modal").html('').hide();clickdata="0";
+                if(pop)  map.removeLayer(pop);}
+                if($("#election_data").is(":visible")){$("#res_info").html('');}
+            }
+            else {
+                try{close_eloc('all');close_cat();}catch(e){}$("#election_modal").load('geoAnalytics').show();clickdata="1";$("#election_checkbox").prop('checked', true);
+            }
+             event.preventDefault();
+    });
+});
+</script>
+<?php } if($config_files['chardham']['date_start']<=$today && $config_files['chardham']['date_end']>=$today)   {?>
+    <div class="download-app-trigger election-trigger">
+        <div class="btn btn-profile" type="button" >
+          <div class="get-app-icon">
+            <img src="images/ic_chardham.jpg" alt="" />
+          </div>
+          <div class="get-app-text">
+              <span class="profile-name"><a id="chardm" href="https://maps.mapmyindia.com/pilgrimage/chardhamyatra/" target="blank" style="color: #212121;">Chardham Yatra</a></span>
+          </div> 
+        </div>
+     </div>
+<?php }
+if($config_files['pandal']['date_start']<=$today && $config_files['pandal']['date_end']>=$today)  {
+?>
+    <div class="download-app-trigger pandal-app-trigger">
+        <div class="btn btn-profile" type="button" onclick="maps.near_search('pandals','','','','','pandals');">
+          <div class="get-app-icon animated heartBeat slower infinite">
+            <img src="images/search_cat/pandal_icon.png" alt="" />
+          </div>
+          <div class="get-app-text">
+              <span class="profile-name"><a id="durgaPnd" style="color: #212121;">Durga Puja Pandals</a></span>
+          </div> 
+        </div>
+     </div>
+<?php }//finished elec2019 ?>
+    </div>
+    <!-- notification-section -->
+    <?php
+        if($_SESSION['user_name'] && $mobile==0 )
+        {
+            echo'<div class="notification-wrap profile" id="notif"></div>';
+        }
+    ?>
+
+       <div class="reportTrig commonreportTrig">
+            <a href="javascript:void(0)" onclick="var url='place-report@zdata='+btoa(map.getCenter().lat+'+'+map.getCenter().lng+'+'+map.getZoom()+'++');writeReport(url);" class="help_out_trig">
+                <i class="material-icons">add</i>
+            </a>
+            <span>Report an Issue</span>
+        </div>
+        <div class="map-control-sec">
+         <?php 
+                if(!$mobile)
+                {?>
+                <div class="map-c-item">
+                    <a class="map-zoom-in" title=" Map Zoom In" nofollow>
+                <i class="material-icons lhid">add</i> 
+            </a>
+             <a class="map-zoom-out" title=" Map Zoom Out" nofollow>
+                <i class="material-icons lhid">remove</i> 
+            </a>
+         </div>
+                <?php } ?>
+        <div class="map-c-item"> 
+            <input type='checkbox' value='1' id='traffic_show' style='display:none' >
+            <!--a id="traffic_control" title="Traffic ON/OFF" nofollow>
+                <i class="material-icons lhid">traffic</i> 
+            </a-->
+            <a style="height: 36px;line-height: 32px;" id="layer_panel_trigger" title=" Map Layers" nofollow>
+                <i class="material-icons lhid">layers</i> 
+            </a>
+         </div>
+        <div class="map-c-item">
+            <a id="geo_location" class="current-loc" title="GPS Locations" nofollow>
+                            <i class="material-icons lhid">location_searching</i>
+            </a>
+        </div>
+        
+    </div>
+        <?php /*
+        <div class="new-map-control">
+            <input type='checkbox' value='1' id='traffic_show' name='traffic_show' style='display:none' >
+      <ul class="n-m-c-list">
+            <?php 
+                if(!$mobile)
+                {
+         echo '<li class="map-zoom-in">
+          <a rel="nofollow" href="javascript:void(0)" class="tooltip" alt="Map zoom in"><span class="tooltiptext">Zoom In</span><span>+</span></a>
+        </li>
+    <li class="map-zoom-out">
+          <a rel="nofollow" href="javascript:void(0)" class="tooltip" alt="Map zoom out"><span class="tooltiptext">Zoom Out</span><span>-</span></a>
+        </li>';
+                }
+             ?>
+               <li id="layer_panel_trigger">
+          <a rel="nofollow" href="javascript:void(0)" class="tooltip" alt="Satellite map of india"><span class="tooltiptext">Map Layer</span><i class="material-icons">layers</i></a>
+        </li>
+        <li id="geo_location">
+          <a rel="nofollow" href="javascript:void(0)" class="tooltip" id="gloc" alt='Live map'>
+                        <span class="tooltiptext">Current Location</span><i class="material-icons">location_searching</i></a>
+        </li>
+                 <li id="traffic_control">
+          <a rel="nofollow" href="javascript:void(0)" class="tooltip" alt="Live traffic map"><span class="tooltiptext">Traffic</span><i class="material-icons">traffic</i></a>
+        </li>
+    <!-- <li id="weather_panel_trigger">
+                    <a rel="nofollow" href="javascript:void(0)" class="tooltip" alt="Local weather">
+                            <span class="tooltiptext">Weather</span><i class="material-icons">cloud_queue</i>
+          </a>
+        </li> -->
+      </ul>
+    </div> 
+    <div class="taketourSec">
+              <div class="taketour_block">
+                  <a id="tk_tour">
+                  <span class="tourText">Take a tour</span>
+                  <span class="tourIcon"><img src="images/taketour/tour_icon.png" alt="" /></span>                  
+                </a>
+              </div>
+              <a href="#" class="tourleftArrow"></a>
+              <a href="#" class="tourrightArrow"></a>
+    </div>
+        */?>
+<?php /*?>
+    <div class="layer_panel_sec" id="layer_panel_sec">
+  <div class="layer_panel_head clearfix">
+    <h2>Map Layers</h2>
+    <button class="btn btn-default" id="layer_panel_close"><i class="material-icons">close</i></button>
+  </div>
+  <div class="l_p_list_sec">
+    <ul class="l_p_list">
+    <?php if($config_files['mapmyindia']['status']==1) {?>
+      <li id="m_t">
+        <a rel="nofollow" href="javascript:void(0)" ><div class="l_p_l_item clearfix">
+        <div class="l_p_l_img"><img src="images/layer_panel/mapview.jpg" alt="India map" /></div>
+        <div class="l_p_l_text"><h4>MapmyIndia</h4></div> 
+        </div></a>
+      </li>
+      <?php }if($config_files['hybrid']['status']==1) {?>
+      <li id="h_t">
+        <a rel="nofollow" href="javascript:void(0)">
+          <div class="l_p_l_item clearfix"><div class="l_p_l_img">
+            <img src="images/layer_panel/hybridview.jpg?<?php echo CACHE_DT; ?>" alt="Drive map" /></div>
+            <div class="l_p_l_text"><h4>Hybrid</h4></div> 
+          </div></a>
+      </li>
+      <?php }if($config_files['indic']['status']==1) {?>
+      <li id="i_t">
+        <a rel="nofollow" href="javascript:void(0)">
+          <div class="l_p_l_item clearfix"><div class="l_p_l_img">
+              <img src="images/layer_panel/regional.png?<?php echo CACHE_DT; ?>" alt="Local map" />
+            </div><div class="l_p_l_text"><h4>Indic</h4></div>  
+          </div></a>
+      </li>
+      <?php }?>
+      <li id="g_report">
+        <a rel="nofollow" href="javascript:void(0)"><div class="l_p_l_item clearfix">
+            <div class="l_p_l_img"><img src="images/layer_panel/report_map.png" alt="Road conditions" /></div>
+            <div class="l_p_l_text"><h4 class="rpp_spn">Report</h4></div> 
+          </div></a>
+      </li>
+
+      <li id="g_saves" style="display: none;">
+        <a rel="nofollow" href="javascript:void(0)"><div class="l_p_l_item clearfix">
+            <div class="l_p_l_img"><img src="images/layer_panel/mysaves_map.png" alt="My saves" /></div>
+            <div class="l_p_l_text"><h4 class="saves_spn">My Saves</h4></div> 
+          </div></a>
+      </li>
+ 
+      <li id="g_devices" style="display: none;">
+        <a rel="nofollow" href="javascript:void(0)"><div class="l_p_l_item clearfix">
+            <div class="l_p_l_img"><img src="images/layer_panel/device_map.png" alt="My devices"/></div>
+            <div class="l_p_l_text"><h4 class="devices_spn">My Devices</h4></div> 
+          </div></a>
+      </li>
+    </ul>
+    </div>
+</div><!--End Layer Control Panel-->
+<?php */?>
+
+
+<!--start weather-->
+<?php /* 
+<div class="layer_panel_sec weather_panel_sec" id="weather_panel_sec">
+  <div class="layer_panel_head clearfix">
+    <h2>Weather</h2>
+    <button class="btn btn-default" id="weather_panel_close">
+      <i class="material-icons">close</i>
+    </button>
+  </div>
+  <div class="l_p_list_sec clearfix">
+    
+    <div class="panel-group clearfix" id="accordion">
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+        <h4 class="panel-title" id="w_temp">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)" onclick="maps.weather('temp',1);">
+            <span class="panel-img">
+              <img src="images/weather/temp.png" alt="" />
+            </span>
+            <span>Temperature</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+        <h4 class="panel-title" id="w_windSpeed">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)"  onclick="maps.weather('windSpeed',1)">
+            <span class="panel-img">
+              <img src="images/weather/wind.png" alt="" />
+            </span>
+            <span>Wind</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+        <h4 class="panel-title" id="w_precip24hr">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)"  onclick="maps.weather('precip24hr',1)">
+            <span class="panel-img">
+              <img src="images/weather/pre.png" alt="" />
+            </span>
+            <span>Precipitation</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+        <h4 class="panel-title" id="w_snow24hr">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)" onclick="maps.weather('snow24hr',1)">
+            <span class="panel-img">
+              <img src="images/weather/snow.png" alt="" />
+            </span>
+            <span>Snow</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+        <h4 class="panel-title" id="w_feelsLike">
+          <a rel="nofollow" href="javascript:void(0)"  onclick="maps.weather('feelsLike',1)">
+            <span class="panel-img">
+              <img src="images/weather/feel-like.png" alt="" />
+            </span>
+            <span>Feels Like</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+        <h4 class="panel-title" id="w_cloudsFcst">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)" onclick="maps.weather('cloudsFcst',1)">
+            <span class="panel-img">
+              <img src="images/weather/cloud.png" alt="" />
+            </span>
+            <span>Cloud</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+                              <h4 class="panel-title" id="w_uv">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)" onclick="maps.weather('uv',1)">
+            <span class="panel-img">
+              <img src="images/weather/uv.png" alt="" />
+            </span>
+            <span>UV</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+      <div class="panel panel-default">
+        <div class="panel-heading clearfix">
+                     <h4 class="panel-title" id="w_dewpoint">
+          <a data-toggle="collapse" data-parent="#accordion" rel="nofollow" href="javascript:void(0)"  onclick="maps.weather('dewpoint',1)">
+            <span class="panel-img">
+              <img src="images/weather/dew.png" alt="" />
+            </span>
+            <span>Dew point</span>
+          </a>
+        </h4>
+        </div>
+      </div>
+    </div> 
+    
+  </div>
+</div>
+
+<!--Start bottom date panel weather-->
+
+<!--End bottom date panel weather-->
+ <div class="weather-panel-btm weather-date-panel-btm" id="w_forc_dv"></div>
+<div class="weather-panel-btm" id="w_th_rclr"> </div>
+<!--end weather-->
+*/?> 
+<div class="container mmi-maps">
+        <div class="row main-page" id="main_page" >
+            <div class="search-new-sec with-nav-tabs panel-primary" >
+        <?php if($mobile && !$og[1]) {?>
+        <div class="deep-link-sec-install install-app-sec" style="display: block">
+                    <a href="javascript:void(0)" onclick="$(this).parent().hide();$('.covid-trigger-img').attr('style','top:70px !important')" class="install-app-close">
+                        <i class="material-icons">close</i>
+                    </a>
+
+                    <div class="main-deep-link">
+                        <div class="deep-text-area clearfix">
+                            <img src="images/ic_move_logo.png" alt="">
+                            <h2>Download the App</h2>
+                            <p>FREE Map, Navigation, Traffic & IoT</p>
+                        </div>
+                        <div class="deep-clickable-area clearfix">
+                            <button class="btn btn-default pull-right" onclick="setTimeout(function(){window.location = <?php echo "'".$store_link."'";?>;}, 40);">Install</button>
+                        </div>
+                    </div>
+                </div>
+                 <div class="download-app-trigger election-trigger realviewMain" onclick="realViewOpenMob();">
+        <div class="dropdown" > 
+        <button id="realv_trig"  class="btn btn-profile dropdown-toggle" type="button" alt="Move" style="width:130px;">
+          <div class="get-app-icon">
+            <img src="images/360_Real_View.png" style="height: 32px;margin-top: 4px;margin-left: 13px;">
+          </div>
+          <div class="get-app-text" style="margin-left: 10px;padding-left: 5px;border-left: 1px solid #efefef;">
+              <span class="profile-name"><a id="multi_dv"  style="color: #212121;">Real View</a></span>
+          </div> 
+        </button>
+       
+
+        </div>
+     </div>
+            <?php } ?>
+            <div id="collapse" onclick="collapse(1,'')" alt="map view" >⟪</div> 
+            <div class="search-box clearfix"   id="tab1primary" <?php if(strpos($og[0],'direction')!==false || (strpos($og[0],'place-')===0 && $mobile))echo 'style="display: none;"';  ?>>
+                            <div class="search-box-main">
+                    <div class="hamburger-trigger-sec">
+                        <a id="side-menu" class="hamburger-trigger" style="display: block">
+                        <div class="red-dot red-mark" id="red_dt" style="display: none;"></div>
+                            <div class="hamburger-trigger-item side-menu">
+                                <i class="material-icons side-menu lhid" >menu</i>
+                            </div>
+                        </a>
+                        <a id="side-back" class="hamburger-trigger" onclick="close_eloc('dr')" style="display: none">
+                            <div class="hamburger-trigger-item side-menu">
+                                <i class="material-icons">keyboard_backspace</i>
+                            </div>
+                        </a>
+                    </div> 
+                    <div class="search-input-sec clearfix">
+                        <div class="search-icon">
+                            <i class="material-icons lhid">search</i>
+                        </div>
+                        <div class="search-text">
+                                                    <input type="text" id="auto" name="auto" class="form-control" placeholder="Search for 'corona'" required spellcheck="false" autocomplete="false">
+                                                </div>
+                    </div> 
+                                        
+                                <div id="auto_load"><?php //auto_load method in js for show cross,loader,direction tab, and called from auto.js, js_map for place_details & nearby?>
+                <?php   
+                                    if(!$cur_url || strpos($cur_url,'place')!==0) echo '<div class="directions-trigger-sec">
+                        <a id="dir_tab" class="directions-trigger" title="Get Direction">
+                            <div class="directions-trigger-item">
+                                <i class="material-icons lhid">directions</i>
+                            </div>
+                        </a>
+                    </div>';
+                                ?>            
+                                </div>
+                </div>
+                            <div class="current-loc-box" id="cur_loc_d" title='Current Location'></div>
+            </div>
+              
+            <div class="directions-box clearfix"  id="tab3primary" <?php if(strpos($og[0],'direction')===false) echo 'style="display: none;"';  ?>>
+                <div class="search-box directions-box-item clearfix">
+                    <div class="hamburger-trigger-sec">
+                        <a id="side-menu"class="hamburger-trigger">
+                            <div class="hamburger-trigger-item side-menu">
+                                <i class="material-icons side-menu lhid">menu</i>
+                            </div>
+                        </a>
+                    </div> 
+                    <div class="search-input-sec clearfix">
+                        <h2>Directions</h2>
+                    </div> 
+                    <div class="directions-trigger-sec">
+                                                <a onclick="<?php if(strpos($cur_url,'@covid')!==false){ $ur=explode('zda',explode('@',$cur_url)[1])[0];echo"window.location.href='corona?".str_replace('covid:','',$ur)."'"; }else echo "newdr.x();$('.covidTrigMain,.covidTrigMain a').show();"; ?>" class="directions-trigger">
+                            <div class="directions-trigger-item">
+                                <i class="material-icons">close</i>
+                            </div>
+                        </a>
+                    </div> 
+                </div>
+                <div class="directions-box-main clearfix">
+                    <div class="new-direction-sec new-direction-sec-move">
+                        <ul class="new-direction-list">
+                                        <li class="direction_dir clearfix" id="auto_start-start_dirs" ondragstart="newdr.drag(event);">
+                                          <div class="n-d-icon n-d-StaticIcon div-suffle">
+                                            <img src="images/directions/ic_start_loc_dark.png" alt="" />
+                                          </div>
+                                          <div class="n-d-textField">
+                                            <input type="text" id="auto_start" class="form-control" placeholder="Enter start location" required="">
+                                            <input type="hidden" value="" tabindex="-1" id="start_dirs" name="start_dirs" >
+                                            <span class="close-btn" id="clear_start"><a title="Cancel"><i class="ti-close" alt="Driving directions"></i></a></span>
+                                          </div>
+                                          <div class="n-d-icon n-d-clickIcon">
+                                            <a title="Swap" onclick="newdr.exchange('')" id="dir_exchange">
+                                              <img src="images/directions/ic_reverse_route_dark.png" alt="" />
+                                            </a>
+                                          </div>
+                                          <div class="n-d-icon n-d-clickIconMove">
+                                            <a href="#">
+                                              <img src="images/directions/ic_drag_handle_dark.png" alt="">
+                                            </a>
+                                          </div>
+                                        </li>
+                                        
+                                        <li class="dest_dir direction_dir clearfix" id="auto_end-end_dirs" ondragstart="newdr.drag(event);">
+                                          <div class="n-d-icon n-d-StaticIcon div-suffle">
+                                            <img src="images/directions/ic_end_loc_dark.png" alt="" />
+                                          </div>
+                                          <div class="n-d-textField">
+                                            <input type="text" id="auto_end" class="form-control" placeholder="Enter end location" required="">
+                                                <input type="hidden" value="" id="end_dirs" name="end_dirs" tabindex="-1">
+                                                <span class="close-btn" id="clear_end"><a title="Cancel"><i class="ti-close" alt="Map to"></i></a></span>
+                                          </div>
+                                          <div class="n-d-icon n-d-clickIcon">
+                                            <a onclick="newdr.add_destination('')" id="add_dest" class="new-stop">
+                                              <img src="images/directions/ic_add_waypoint_dark.png" alt="" />
+                                            </a>
+                                          </div>
+                                          <div class="n-d-icon n-d-clickIconMove">
+                                            <a href="#">
+                                              <img src="images/directions/ic_drag_handle_dark.png" alt="">
+                                            </a>
+                                          </div>
+                                        </li>
+                                        <li class="clearfix" id="way-points" style="display:none">
+                                            <div class="n-d-icon n-d-StaticIcon">
+                                              <img src="images/directions/ic_add_waypoint_dark.png" alt="" />
+                                            </div>
+                                            <div class="n-d-textField" style="margin-top: 8px;" onclick="newdr.add_destination('')">
+                                             <a type="button" value="Add Waypoint" style="color: #2a445b;">Add Waypoint</a>
+                                            </div>
+                                          
+                                          </li>
+                                            
+                                      </ul>
+                    </div>
+                </div>
+                <?php if($mobile) echo '<div class="get-route-sec" onclick="newdr.get_routes(\'\',\'mob\');">
+                                            <a href="javascript:void(0)" class="get-route-btn">Get Route</a>
+                                        </div>';?>
+            </div>
+              
+              
+                 <?php
+                    $category=globals::cat_code("");$num=1;$seach_category=[];$cat_li="";
+                    foreach($category as $c_id=>$ind_cat)
+                    {
+                       $c_name=$ind_cat['name'];
+                       $c_bg=$ind_cat['bg'];
+                       $c_icon=$ind_cat['icon'];
+                       $search=$ind_cat['search'];
+                       if($search===0) continue;
+                       $c_link=($near_txt=='me' && !$og_v?'':'place-').$c_id."-near-".$near_txt.($og_v?'?@zdata='.base64_encode($img_c[0]."+".$img_c[1]."+16++$c_id+el").'ed':"");
+                    if($c_name=="Holi Sweets")
+                        {
+                             $cat_li.= '
+                        <li id="ct_'.$c_id.'">  
+                        <div class="cat-icon" "'.$stll_.'"><img src="images/cat/blue_cat/'.$c_icon.'.png?'.CACHE_DT.'" alt="Find '.$c_name.'" title="Search Nearby '.$c_name.'" /></div>
+
+                        <div class="cat-name"><a  href="./'.$c_link.'"><span style="
+                                        font-weight: bold;
+                                        "><span style="
+                                        color: #d801fa;
+                                    ">H</span><span style="
+                                        color: #289100;
+                                    ">o</span><span style="
+                                        color: #f06900;
+                                    ">l</span><span style="
+                                        color: #0e18f4;
+                                    ">i</span> Sweets</span></a></div>
+                   
+                        </li>';
+                    }else{
+                         $cat_li.= '
+                        <li id="ct_'.$c_id.'">  
+                        <div class="cat-icon" "'.$stll_.'"><img src="images/cat/blue_cat/'.$c_icon.'.png?'.CACHE_DT.'" alt="Find '.$c_name.'" title="Search Nearby '.$c_name.'" /></div>
+                        <div class="cat-name"><a  href="./'.$c_link.'">'.$c_name.'</a></div>
+                        </li>';
+                    }
+
+                        
+
+                        $num++;
+                        if($num==4)
+                        {
+                            $cat_li.= ' <li id="cat-more-btn">    
+                                    <div class="cat-icon">
+                                      <img src="images/cat/blue_cat/ic_more_ldpi.png" alt="" />
+                                    </div>
+                                    <div class="cat-name"><a>More</a></div>
+                                 </li>';
+                        }
+                        elseif($num==5)
+                        {
+                            $cat_li.= ' </ul>
+                                </div>
+                                <div class="rest-category">
+                               <ul class="mob-cat-list clearfix">';
+                        }
+                        /*auto search categegory to put in auto.js*/
+                        if($ind_cat['search'])
+                        {
+                            $search_category[$ind_cat['search']]='<li id="ct_'.$c_id.'"><div class="cat-icon"><img src="images/cat/blue_cat/'.$c_icon.'.png" /></div><div class="cat-name"><a>'.$c_name.'</a></div></li>';
+                        }
+                    }
+                    ksort($search_category);$search_category=implode('',$search_category);/*added hidden ul be;low category*/
+                   // if(!$mobile)
+                    if(1)
+                    {
+                    ?>
+                    <div class="new-category-sec" id="cat_tab">
+                    <div class="new-category-sec-head clearfix">
+                        <h1 style="font-weight:bold">Find nearby facilities</h1>
+                            <button class="btn btn-default" id="new-category-sec-close" onclick="x_cat=1;close_cat()"><i class="material-icons lhid">close</i></button>
+                    </div>
+                    <div class="mob-cat-theme">
+                            <div class="shown-category">
+                                                    <ul class="mob-cat-list clearfix">
+                                                            <?php
+                                                            echo $cat_li;
+                                                            ?>
+                                                            <li id="cat-less-btn">
+                                                                <div class="cat-icon">
+                                                                  <img src="images/cat/blue_cat/ic_less_ldpi.png" alt="Live map of India" />
+                                                                </div>
+                                                                <div class="cat-name"><a>Less</a></div>
+                                                            </li>
+                                                        </ul>
+
+                                                    </div>
+                      </div>
+                      </div>
+                    <?php
+                    }
+                    ?>
+                  <div id="auto_cat" style="display: none"><div class="new-category-sec his-new-category" style="display:block;"><div class="mob-cat-theme"><div class="search-his-cat"><ul class="mob-cat-list clearfix"><?php echo $search_category;?></ul></div></div></div></div>
+                <?php /*if(!$Mobile){ ?>
+                  <div class="get-eloc-sec-bus" id="get-eloc-sec-bus" style="display:none">
+                    <a class="bus-close" id="bus-close" onclick="close_getelc=1;$(this).parent().hide();">
+                        <i class="material-icons">close</i>
+                    </a>
+                    <div class="show-eloc-sec" id="side_1">
+                        <div class="add_buss_icon">
+                            <img src="images/add_business.png" alt="" />
+                        </div>
+                        <div class="eloc-text-sec">
+                            <h2>Add a Business (New)</h2>
+                            <p style="margin: 0 0 15px;padding-left: 100px;">Put up your business for customers to look it up and follow you on Move.</p>
+                        </div>
+                        <div class="eloc-control-sec text-center">
+                            <button class="eloc-btn" onclick="maps.add_place('business');">Add a Business</button>
+                        </div>
+                    </div>
+                </div> 
+                <?php */ if(!$mobile){ ?>  
+                  <div class="get-eloc-sec-bus" id="get-eloc-sec-bus" style="display:none;">
+                    <a class="bus-close" id="bus-close" onclick="close_getelc=1;$(this).parent().hide();$('.covid-trigger-img').show();">
+                        <i class="material-icons">close</i>
+                    </a>
+                    <div class="show-eloc-sec" id="side_1">
+                        <div class="add_buss_icon">
+                            <img src="images/corona/fab_corona.png" alt="" />
+                        </div>
+                        <div class="eloc-text-sec">
+                            <h2>COVID-19 on your mind?</h2>
+                            <p style="margin: 0 0 15px;padding-left: 100px;font-weight: bold;color: #444;">Track the latest India stats or find Coronavirus facilities around you with MapmyIndia's COVID-19 Guide.</p>
+                        </div>
+                        <div class="eloc-control-sec text-center">
+                            <button class="eloc-btn eloc-report" onclick="window.location.href='covid-19'"><i class="material-icons">bar_chart</i> Go To the Guide</button>
+                        </div>
+                    </div>
+                </div> 
+                  <div class="get-eloc-sec-bus" style="display:none">
+                    <a class="bus-close" id="bus-close" onclick="close_getelc=1;$(this).parent().hide();$('.covid-trigger-img').show();">
+                        <i class="material-icons">close</i>
+                    </a>
+                    <div class="show-eloc-sec" id="side_1">
+                        <div class="add_buss_icon">
+                            <img src="images/corona/fab-corona.png" alt="" />
+                        </div>
+                        <div class="eloc-text-sec">
+                            <h2>Share. We Know You Care.</h2>
+                            <p style="margin: 0 0 15px;padding-left: 100px;font-weight: bold;color: #444;">One small action could greatly help someone. Share live pan India COVID-19 Guide and 
+                                    Move app with others</p>
+                        </div>
+                        <div class="eloc-control-sec text-center">
+                            <button class="eloc-btn eloc-report" onclick="share('https://maps.mapmyindia.com/corona');"><i class="material-icons">share</i> Share Information</button>
+                        </div>
+                    </div>
+                </div> 
+            <?php } ?>
+                  
+           <?php /*     <div class="get-eloc-sec" id="get-eloc-sec"></div><?php // added div eloc_tap for display button ?> */  ?>
+        <div id="get_eloc_dv" style="display: none;"></div>  
+        <div id="taketour_dv"></div>      
+        </div>
+           
+            <!--<div class="search-list-click-wrap light-blue-top-bdr set_height"></div>-->
+            
+            <div id="res_info" ><?php echo $infoHtml;?></div>
+            <div class="custom-bg-overlay"></div>
+            <nav class="custom-drawer-nav" id="login_dv_menu" >
+                <div class="side-bar-scroll mCustomScrollbar _mCS_1 mCS-autoHide mCS_no_scrollbar" data-mcs-theme="minimal-dark" style="position: relative; overflow: visible;">
+                        
+                        <div class="side-bar-profile side-bar-world-view clearfix" onclick="home(0);getListContent('','d29ybGQ=','','my-world','');event.preventDefault();" id="world_view">    
+                            <div class="side-lside pull-left">
+                    <div class="side-pic"><img src="images/side/ic_worldview.png" alt="" class="mCS_img_loaded"></div>
+                    <div class="side-text"><h2><a href="./my-world-data">My World View</a></h2><p>Your Feed</p></div>
+                            </div> 
+                        </div><br><br>
+                    <div onclick="window.location.reload()" style="text-align:center;cursor:pointer">Connection Failed<br><h2>Try Again</h2></div>
+                </div>
+            <?php echo $menu_html[1]; ?> 
+            </nav>
+        </div>
+
+        <div class="row map map-page">
+       <div class="addp-web-onmap-sec">
+        <div class="addp-user-sugg clearfix">
+            <a class="addp-u-s-close" onclick="$(this).parent().hide();">
+                        <i class="fa fa-times-circle"></i>
+                    </a>
+                    <p><i class="fa fa-exclamation-circle"></i><strong> Quick Tip: </strong>The map is centered to your current detected location (as a default)</p>
+                    <ul class="addp-user-sugg-list clearfix">
+                        <li>
+                            <div class="adddp-u-s-icon">
+                                <i class="fa fa-search"></i>
+                            </div>
+                            <div class="adddp-u-s-text">
+                                Search for a different place, using the "Street Location Search"
+                            </div>
+                        </li>
+                        <li>
+                            <div class="adddp-u-s-icon">
+                                <i class="fa fa-arrows"></i>
+                            </div>
+                            <div class="adddp-u-s-text">
+                                Move the map to focus on desired area.
+                            </div>
+                        </li>
+                        <li>
+                            <div class="adddp-u-s-icon">
+                                <img src="images/addp_03.png" alt="" />
+                            </div>
+                            <div class="adddp-u-s-text" style="margin-top:10px;">
+                                Pan &amp; Zoom the map for detailed view
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="addp-web-addr-block clearfix">
+            <a class="addp-u-s-close" onclick="$(this).parent().hide();" style="float:right;">
+                        <i class="fa fa-times-circle" style="font-size:24px"></i>
+                    </a>
+                    <div class="pull-left">
+                        <div class="search-addp-map-result">
+
+                            <ul class="addp-search-item">
+                                <li class="addp-map-marker">
+                                <i class="fa fa-map-marker"></i> Current Marker Location</li>
+                                <li id="indexplacedist" class="iaddp-dis">Selected location is <strong></strong>m away from</li>
+                                <li id="indexplacename" class="iaddp-name"></li>
+                                <li id="indexplaceaddr" class="iaddp-addr"></li>
+                            </ul>
+                        </div>
+            
+                    </div>
+                    <div class="pull-right">
+                        <button class="btn btn-primary" style="display:none">Next</button>
+                    </div>
+                </div>
+            </div>
+            <div class="map" id="map"></div>    
+        </div>
+    </div>
+</div>
+<!-- feedback-->
+<div id="add_new_list">
+    <div class="login add-new-list-popup feedback-popup">
+        <div class="login_wraper">
+            <div class="login-item add-new-list-popup-item col-sm-12">    
+                <a onclick="$('#add_new_list').hide()" class="login-close-btn" id="add_new_list_close_btn" title="Close"><i class="ti-close"></i></a>    
+                <div class="login-content">
+                    <h2>How do you like our new version?</h2>
+                    <p>We would love to hear about your experience! Tell us about any issues, & feel free to suggest improvements...</p>
+                    <div class="login-form-content">
+                        <form>
+                            <span class="input input--hoshi">
+                                <input class="input__field input__field--hoshi" type="text" id="f_email" value="<?php echo $_SESSION['email'];?>" />
+                                <label class="input__label input__label--hoshi input__label--hoshi-color-1" for="input-4">
+                                    <span class="input__label-content input__label-content--hoshi read_only_label">Email</span>
+                                </label>
+                            </span>
+            
+                            <span class="input input--hoshi">
+                                <textarea class="input__field input__field--hoshi" type="text" id="feed_back"></textarea>
+                                <label class="input__label input__label--hoshi input__label--hoshi-color-1 des-lab" for="input-4">
+                                    <span class="input__label-content input__label-content--hoshi">Feedback</span>
+                                </label>
+                            </span>
+                            <div class="col-sm-12 custom-form-group btn-item">
+                                <div class="col-sm-12 pull-right">
+                                    <input type="button" class="btn btn-login pull-right" id="send_feedback" value="Submit" onclick="maps.send_feedback()">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>         
+    </div>
+</div>
+<?php//<div id="feedback" class="get-route" title="Feedback" onclick="maps.feedback()"><i class="fa fa-comment-o"></i>&nbsp; Feedback</div>?>
+</body>
+
+<script type="text/javascript">
+    var uname="<?php echo $_SESSION['user_name']; ?>",home_work=[],uemail="<?php echo $_SESSION['email']; ?>",uid="<?php echo $_SESSION['user_id']; ?>",cachdt="<?php echo CACHE_DT; ?>";
+    var js_path="<?php echo _JS_; ?>",css_path="<?php echo _CSS_; ?>",map_key="<?php echo map_key; ?>",drag="<?php echo $drag ?>",intouch_url="<?php echo intouch_url; ?>";
+    var evnt_url="<?php echo EventApi; ?>",userpath="<?php echo USER_PATH; ?>",map_lat="23.61",map_lng="80.23",map_zm="5",deviceNAme= "<?php echo $_SESSION['deviceTp']; ?>",ref="<?php  if(strpos($ref,$_SERVER['HTTP_HOST'])===false) echo strip_tags($ref);?>";
+    if('<?php echo $mobile;?>'==1) var map_zm="4";
+    try 
+    { 
+        var local_st=localStorage.getItem("local"); 
+    }
+    catch (exception) 
+    {  
+        var local_st="";
+    }
+    var sess_lat="<?php if($_SESSION['latlng']!=',')echo $_SESSION['latlng']; ?>";
+    if(sess_lat  && sess_lat!=',')
+    { 
+        sess_lat=sess_lat.split(",");
+        map_lat=sess_lat[0];
+        map_lng=sess_lat[1];
+        map_zm=11;
+    }
+    var url_n = window.location.toString().split('/');var curl = url_n.slice(-1)[0];
+    
+    if(curl.indexOf('appzdata')!=-1 && !local_st) {try{localStorage.setItem("deepVal",1);}catch(e){}}
+    if(curl.indexOf('zdata')!=-1) 
+    {
+        var zdt=curl.split('zdata='); 
+        try{var dcd=atob(zdt[1].replace(/ed|![0-4][0-4]/g,''));}catch(e){var dcd='';}
+      
+        if(zdt[0].indexOf('place-')===0  && dcd) 
+        {
+         if(dcd_arr){map_lat=dcd_arr[0];map_lng=dcd_arr[1];map_zm=dcd_arr[2];}
+        }
+        if(zdt[0].indexOf('-near-')!=-1 && dcd && curl.indexOf('direction-')==-1) 
+        { 
+            var dcd_arr=dcd.split(',');
+            if(dcd.indexOf('+el')>1)
+            {
+                var nt=dcd_arr[0].split('+');
+                map_lat=nt[0].substr(0,9);map_lng=nt[1].substr(0,9);map_zm=nt[2];
+            }
+           else{
+            map_lat=dcd_arr[1].substr(0,9); 
+            map_lng=dcd_arr[0].substr(0,9);
+            map_zm=16;
+            }
+        }
+    }
+    else if(local_st) 
+    {
+        var new_data=JSON.parse(local_st); 
+        var map_ltn=new_data[0].address.replace('ed','').split('data=');
+        var map_cord=atob(map_ltn[1].replace('ed','')).split('+');
+        if(map_cord[0]) map_lat=map_cord[0];
+        if(map_cord[1]) map_lng=map_cord[1];
+        map_zm=map_cord[2];
+    }
+    
+
+</script>
+<script src="<?php echo _JS_; ?>/?<?php echo CACHE_DT.".js";if($_GET['1']==1) echo "&1=1"; ?>"></script>
+<script src="<?php echo _JS_; ?>/vmap/?<?php echo date('ymd').CACHE_DT;if($_GET['1']==1) echo "&1=1"; ?>"></script>
+
+
+<?php
+echo $script;
+?>
+
+<!-- map-control-web -->
+<script>
+ tkn='<?php echo $_SESSION["access_atlas"]; ?>';
+$(window).load(function(){
+
+  maplayerD = $.ajax({method:"post",url: "maplayer_call",
+      success: function(data) { 
+        var obj =JSON.parse(data); 
+             $("#mapLayerTest").html(obj.html);
+      }});
+
+    if(mobilecheck()) {
+        $('.covid-trigger-img').show();
+        $('.covid-trigger-img').attr('onclick','window.location.href=\'corona\'');
+        setTimeout(function(){
+            $(".reportTrig span").hide();
+            $(".reportTrig span").addClass("showReport");
+        },4000);
+    }
+
+    setTimeout(function(){
+        if('<?php echo $_COOKIE["what_new"];?>'=='' || '<?php echo $_COOKIE["total"];?>'!=$('ul.whatsnewList li').length) $(".red-mark").show();
+        else $(".red-mark").hide();
+    $(".help_out_trig").addClass("reportRotate");
+    if(!mobilecheck()) $("#red_dt").hide();
+    },1000);
+    setTimeout(function(){
+        var cookie = '<?php echo $_COOKIE["cookie"];?>';
+
+        if ('<?php echo $_COOKIE["cookie"];?>'=='') {
+            if(mobilecheck()) $('.cookiesSec').addClass("mobCookiesSec");
+            $('.cookiesSec').show();
+            /*document.cookie="cookie=1";*/
+        }
+    },5000);
+
+});
+
+$("#cookieClose").click(function()
+{
+    document.cookie="cookie=1";
+    $(".cookiesSec").hide();
+});
+
+function whatsNewPopup(){
+    $('.whatsnewWidgetSec').show();
+    $('.whatsnewList').scrollTop(0);
+    document.cookie='what_new=1';
+    document.cookie='total='+$('ul.whatsnewList li').length;
+    $('.red-mark').hide();
+}
+
+$(document).ready(function()
+{  
+    comman('menu','menu',{"evt":"menu","url":maps.uri()});/*menu load*/  
+    if(maps.uri() && !maps.uri().indexOf('@')===0)  close_cat();
+    $(".new-map-control").show();
+    if(!$('.map').height()) $('.map').css({"height":$(window).height()+"px"});
+    deviceType = '<?php echo $mobile?>';
+    if(!curl || curl.indexOf('@')===0) $("#cat_tab,#get-eloc-sec,.get-eloc-sec-bus").show(); 
+    $(".login-close-btn").click(function()
+    {
+        $(".login").css("display","none");
+    });
+
+    $.getJSON('new.json?<?php echo CACHE_DT;?>', function(data) {
+        var data = data.whats_new;
+        var whatsnewhtml='';
+        $(data).each(function(i, val)
+        {
+            whatsnewhtml += '<li>'+
+                  '<a>'+
+                      '<div class="listTime">'+val.Version+'<span style="color: #888;"> ('+val.Date+')</span>'+(val.status?val.status:'')+'</div>'+
+                      '<h2>'+(val.Title?val.Title:'')+'</h2>'+
+                      '<p>'+val.Desc+'</p>'+
+                  '</a>'+
+            '</li>';
+        });
+        $(".whatsnewList").html(whatsnewhtml);  
+    });
+
+    $(".login_btn").click(function()
+    {
+        $(".login").show();
+    });
+
+    $(".search-title").click(function()
+    {
+        $(".set_height").toggleClass("showlist");
+        $(".panel-body.forhide").toggleClass("hidelist");
+    });
+ 
+
+    $("#nearby-categories-item").mCustomScrollbar(
+    {
+        theme:"dark",
+        scrollInertia:100,
+    });
+
+    $(document).on("click", "#uaplace_add_img", function(event)
+    {
+        $("#uaddplace_browse").click();
+        event.preventDefault();
+    }).on("click", "#edtplace_add_img", function(event)
+    {
+        $("#edtplace_browse").click();
+        event.preventDefault();
+    }).on( "click", "#side-menu", function (event)/*side menu*/
+    {
+       $("#weather_panel_sec").removeClass("layer_panel_pos");
+        $(".custom-bg-overlay").attr("style", "display: block");
+        $("#login_dv_menu").attr('style', 'left: 0px !important');
+        $("#taketour_dv").attr("style", "display: none");
+        if(!mobilecheck()) $(".whatnewSec").hide();
+        event.preventDefault();
+    }).on( "click touch", function ( e ) 
+    {
+      if($(e.target).css('line-height')=='50px'){
+            $(".custom-bg-overlay").attr("style", "display: block");
+            $("#login_dv_menu").attr('style', 'left: 0px !important');
+          }
+          else if(!$(e.target).hasClass('side-menu')) 
+          {
+                  $(".custom-bg-overlay").hide();
+            $("#login_dv_menu").attr('style', 'left: -325px !important');
+          }
+    }).on( "keydown", function ( e ) 
+    {
+        if ( e.keyCode === 27 ) 
+        {
+            $(".custom-bg-overlay").hide();
+            $("#login_dv_menu").attr('style', 'left: -325px !important');
+        }
+    });
+    var lastY=0,lastX=0;src = document.getElementById("login_dv_menu");/*hemburger menu drag*/
+    src.addEventListener('touchmove', function(e) {
+      var thisX= e.touches[0].clientX-195,c_y=e.touches[0].clientY;
+      if(!lastY) {lastY=c_y;lastX=thisX;return;}
+      if($(this).position().left<=0 && (thisX-lastX)<=0 && Math.abs(c_y-lastY)<20 ){ $(this).attr('style', 'left: '+(thisX-lastX)+'px !important');}
+    }, false);src.addEventListener('touchend', function(e) {lastY=0;lastX=0;if($(this).offset().left<-5) {$(this).attr('style', 'left: -325px !important');$(".custom-bg-overlay").hide();f_tch=0;return false;}
+else $(this).attr('style', 'left: 0px !important');});
+/*siemenu*/
+ $(document).on("click", "#weather_close", function(event){if(weather_tile) map.removeLayer(weather_tile);$("#weather_panel_trigger").removeClass( "active");$(".weather-panel-btm").hide();$("#weather_panel_sec").removeClass("layer_panel_pos");maps.set_current();});
+ $("#weather_panel_trigger").on("click", function(){$("#weather_panel_sec").addClass("layer_panel_pos");});
+ $("#weather_panel_close").on("click", function(){$("#weather_panel_sec").removeClass("layer_panel_pos");});
+ if(!$('.map').height()) $('.map').css({"height":$(window).height()+"px"});
+
+
+/* collapse js starts here */
+    $('.tourleftArrow').click(function(e) {
+        e.preventDefault();
+        $(this).hide();
+       $('.tourrightArrow').show();
+        $('.taketourSec').animate({
+            'left': '-121px'
+        });
+    });
+     $('.tourrightArrow').click(function(e) {
+        e.preventDefault();
+        $(this).hide();
+       $('.tourleftArrow').show();
+        $('.taketourSec').animate({
+            'left': '0'
+        });
+    });
+    $(document).on("click", "#tk_tour", function(){$("#error_modal").load("take_tour").show();});
+   <?php /* if(deviceType!=1 && '<?php echo $_COOKIE['boarding'];?>'=='' && !curl) $("#taketour_dv").load("take_tour");*/?>
+    /* collapse js ends here */
+
+});
+$(window).load(function(){$(".lhid").show();<?php /*hide in css for font load*/?>});
+/*near & onborad */
+$(".shown-category .mob-cat-list li:last-child").hide();
+    $("#cat-more-btn").on("click", function(){
+      $(".rest-category").slideDown();
+      $(this).hide();
+      $(".shown-category .mob-cat-list li:last-child").show();
+      $("#cat_tab h1").html("Search Nearby");
+                        return false;
+    });
+    
+    $("#cat-less-btn").on("click", function(){
+      $(".rest-category").slideUp();
+      $(".shown-category .mob-cat-list li:last-child").hide();
+      $("#cat-more-btn").show();
+      $("#cat_tab h1").html("Find nearby COVID-19 facilities");return false;
+    });
+                
+/*$("#layer_panel_trigger").on("click", function(){$("#layer_panel_sec").addClass("layer_panel_pos");});
+$("#layer_panel_close").on("click", function(){$("#layer_panel_sec").removeClass("layer_panel_pos");});*/
+/*$("#layer_panel_trigger").on("click", function(e){ e.stopPropagation(); $("#mapLayerSidePanelMain").addClass("customPanelMain");$(".mapLayerMain .layer_sec").hide();$(".mapLayerMain .step_01").show();});
+$("#mapLayerCLose").on("click", function(){$("#mapLayerSidePanelMain").removeClass("customPanelMain");});*/
+if(window.innerHeight!=document.body.offsetHeight) $(".map").height(window.innerHeight);
+$("#area_dv,#scale_dv").on("click", function(){ 
+    if(!uname) {notify('You need to login to use this feature');loginDv(this.id);}
+    else{
+            if(this.id=='area_dv'){ if($('#scale_dv').hasClass('active')) return false; if($(this).hasClass('active')) {$('.eloc-message-alert').hide(); measureControl._finishMeasure();} else load_module('area'); $(this).toggleClass('active');}
+            else {if($('#area_dv').hasClass('active')) return false;$(this).toggleClass('active'); if(!$('.leaflet-bar-part').length) {load_module('measure');} else plugin._toggleMeasure();}
+        }
+});
+</script>
+
+<?php /*
+<div class="overlay-popup-sec in" id="app-card" aria-hidden="true" style="display:none;">
+    <div class="overlay-main">
+      <div class="overlay-main-content onboarding-scroll-mob">
+        <button class="btn btn-default" data-dismiss="modal" onclick="$('#app-card').hide();">
+        <i class="fa fa-times-circle"></i>
+      </button>
+        
+        <div id="onboardingCarousel2" class="carousel slide" data-ride="carousel">
+
+        <!-- Wrapper for slides -->
+        <div class="carousel-inner">
+                              <div class="item active">
+            <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/opt_02.jpg" alt="" />
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text app-download-text">
+                                                                <div class="map-app-icon">
+                  <img src="images/onboarding/app_icon.png" alt="" />
+                </div>
+                <h2>The Map App for a Smarter Citizen</h2>
+                <p>Available on</p>
+                <div class="download-app-sec">
+                                                                    <a href="https://play.google.com/store/apps/details?id=com.mmi.maps&amp;hl=en" target="_blank" rel="nofollow">
+                    <img src="images/onboarding/android_app.png" alt="" />
+                  </a>
+                  <a href="https://itunes.apple.com/in/app/map-directions-local-searches-travel-guide/id723492531?mt=8" target="_blank" rel="nofollow">
+                    <img src="images/onboarding/ios_app.png" alt="" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+  
+    </div>
+    </div>
+  </div>
+
+<?php
+
+   if(!$_COOKIE['boarding'] && !$cur_url ){
+    ?>
+<div class="overlay-popup-sec in" id="onboarding-popup-sec" aria-hidden="true" style="display:none" >
+    <div class="overlay-main">
+      <div class="overlay-main-content onboarding-scroll-mob">
+        <button class="btn btn-default" data-dismiss="modal" onclick="close_boarding()">
+        <i class="fa fa-times-circle"></i>
+      </button>
+        
+        <div id="onboardingCarousel" class="carousel slide" data-ride="carousel">
+        <!-- Indicators -->
+        <ol class="carousel-indicators">
+                <li data-target="#onboardingCarousel" data-slide-to="0" class="active"></li>
+                <li data-target="#onboardingCarousel" data-slide-to="1"></li>
+        <li data-target="#onboardingCarousel" data-slide-to="2"></li>
+        <li data-target="#onboardingCarousel" data-slide-to="3"></li>
+        <li data-target="#onboardingCarousel" data-slide-to="4"></li>
+        <li data-target="#onboardingCarousel" data-slide-to="5"></li>
+        </ol>
+
+        <!-- Wrapper for slides -->
+        <div class="carousel-inner">
+                              
+        <div class="item active">
+            <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/onboarding_01.png" alt="">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text">
+                <h2>Search for house addresses, places or use quick search with</h2>
+                <img src="images/onboarding/eloc.png" alt="">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/onboarding_02.png" alt="">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text">
+                <h2>Find places nearby like petrol pumps, coffee, ATMs, parking etc. </h2>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="item">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/onboarding_03.png" alt="">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text">
+                <h2>Track your phones and MapmyIndia Smart IoT devices</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="item">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/onboarding_04.png" alt="">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text">
+                <h2>Report & get to know Swachh Bharat and Smart City issues like litter, traffic jam etc.</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="item">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/onboarding_05.png" alt="">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text">
+                <h2>With "World View" discover what's cool around you </h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="item">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="onboarding-img">
+                <img src="images/onboarding/onboarding_06.png" alt="">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="onboarding-text user-click-sec">
+                <h2>Introducing Navigation with live traffic</h2>
+                <div class="user-click-item text-center">
+                                                                    <button class="btn" id="signup" onclick="$('#onboarding-popup-sec,.modal-backdrop').hide();$('#signup').click();">Sign up</button>
+                  <button class="btn btn-signup" onclick="$('#signin').click();$('#onboarding-popup-sec,.modal-backdrop').hide();">Sign in</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- Left and right controls -->
+        <a class="left carousel-control" href="#onboardingCarousel" data-slide="prev">
+        <i class="fa fa-angle-left"></i>
+        </a>
+        <a class="right carousel-control" href="#onboardingCarousel" data-slide="next">
+        <i class="fa fa-angle-right"></i>
+        </a>
+      </div>
+  
+    </div>
+    </div>
+  </div>
+
+    <script>
+       
+    $(window).load(function(){
+        setTimeout(function(){var url = window.location.toString().split('/');var curl = url.slice(-1)[0];if(!curl || curl.indexOf('@')===0) $("#onboarding-popup-sec").modal("show"); },5000);
+    });
+    function close_boarding()
+    {
+       document.cookie = "boarding=1";
+       setTimeout(function(){var url = window.location.toString().split('/');var curl = url.slice(-1)[0];if(!curl) $('#app-card').show(); },30000);
+    }
+    </script>
+    <?php
+    }
+    
+    */
+    if(strpos($_SERVER['HTTP_HOST'],'.mapmyindia.com')!==false){
+    ?>
+   <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P8HWD5J"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-17882747-9"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-17882747-9');
+    </script>
+    <!-- <script type="text/javascript" src="//static.criteo.net/js/ld/ld.js" async="true"></script>
+    <script type="text/javascript">
+    window.criteo_q = window.criteo_q || [];
+    var deviceType = /iPad/.test(navigator.userAgent) ? "t" : /Mobile|iP(hone|od)|Android|BlackBerry|IEMobile|Silk/.test(navigator.userAgent) ? "m" : "d";
+    window.criteo_q.push(
+     { event: "setAccount", account: 60015}, 
+     { event: "setEmail", email: "##Email Address of user##" }, 
+     { event: "setSiteType", type: deviceType},
+     { event: "viewHome"});
+    </script>  -->
+<script>
+    function ga_analytics(reqUrl)
+    {
+       gtag('config', 'UA-17882747-9');
+    }
+    function vid_mate_check(){}
+    <?php 
+ 
+    if(!$_SESSION['UID'])
+    {
+       $_SESSION['UID']=md5(session_id());  
+       echo '$.ajax({url: "uid!"});';
+    }
+    ?>
+</script>
+<!-- Google Tag Manager -->
+<!-- End Google Tag Manager (noscript) -->
+
+<script>
+   (function(h,o,t,j,a,r){
+       h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+       h._hjSettings={hjid:156973,hjsv:6};
+       a=o.getElementsByTagName('head')[0];
+       r=o.createElement('script');r.async=1;
+       r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+       a.appendChild(r);
+   })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+</script>
+
+<?php
+}
+else echo "<script>function ga_analytics(reqUrl){}</script>";
+/*if($_SERVER['HTTP_HOST']=='maps.mapmyindia.com')*/
+{
+  
+?>
+
+
+<?php }
+if($mobile) {
+    echo '<script>
+  if (\'serviceWorker\' in navigator) {
+  
+    navigator.serviceWorker.register(\'service-worker.js\')
+      .then(function(reg){
+     
+      }).catch(function(err) {
+        console.log("No it", err)
+      });
+  }
+</script>';
+}
+?>
+<div class="aqiHome" style="display: none;">
+            <div class="aqiHomeItem clearfix">
+                <div class="aqiHomeItemImg" id="weatherIcon">
+                </div>
+                <div class="aqiHomeItemText" id="htempp">
+                    35<sup>0</sup>C
+                </div>
+            </div>  
+           <div class="aqiHomeItem">
+                <div class="aqiHomeData" id="haqi">AQI 15</div>
+            </div>  
+</div>
+
+
+
+</html>
+<?php
+if($obcat) ob_end_flush();
+
+if($ftl)  echo "<script>if(timer) clearInterval(timer);</script>"; 
+?>
+
+
 
 
